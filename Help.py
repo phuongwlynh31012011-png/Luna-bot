@@ -14,9 +14,9 @@ class Help(commands.Cog):
 
     @app_commands.command(
         name="help",
-        description="Xem bảng điều khiển lệnh của Luna"
+        description="Xem các lệnh của Luna"
     )
-    async def help(
+    async def help_command(
         self,
         interaction: discord.Interaction
     ):
@@ -34,13 +34,12 @@ class Help(commands.Cog):
                 "**💰 XU LUNE**\n"
                 "`l!balance` — Xem số dư\n"
                 "`l!daily` — Nhận Xu mỗi ngày\n"
-                "`l!work` — Làm việc kiếm Xu\n"
+                "`l!work` — Kiếm Xu\n"
                 "`l!give @user <số tiền>` — Chuyển Xu\n"
-                "`l!rich` — Bảng xếp hạng Xu\n"
-                "`l!shop` — Xem Shop\n"
+                "`l!rich` — BXH Xu\n"
+                "`l!shop` — Xem shop\n"
                 "`l!buy <món>` — Mua đồ\n"
-                "`l!inventory` — Xem túi đồ\n"
-                "`l!hackxu @user <số tiền>` — Owner\n\n"
+                "`l!inventory` — Xem túi đồ\n\n"
 
                 "**💕 LOVE**\n"
                 "`l!love @user` — Xem % tình yêu\n"
@@ -52,12 +51,13 @@ class Help(commands.Cog):
 
                 "**🛡️ ADMIN**\n"
                 "`l!clear <số lượng>` — Xóa tin nhắn\n"
-                "`l!kick @user` — Kick thành viên\n"
-                "`l!ban @user` — Ban thành viên\n"
+                "`l!kick @user` — Kick\n"
+                "`l!ban @user` — Ban\n"
                 "`l!unban <ID>` — Unban\n"
                 "`l!lock` — Khóa kênh\n"
                 "`l!unlock` — Mở khóa kênh"
-            )
+            ),
+            color=discord.Color.dark_purple()
         )
 
         embed.set_footer(
@@ -76,7 +76,7 @@ class Help(commands.Cog):
         name="hello",
         description="Luna chào bạn"
     )
-    async def hello(
+    async def hello_command(
         self,
         interaction: discord.Interaction
     ):
@@ -92,7 +92,4 @@ class Help(commands.Cog):
 # ==========================================
 
 async def setup(bot):
-
-    await bot.add_cog(
-        Help(bot)
-    )
+    await bot.add_cog(Help(bot))

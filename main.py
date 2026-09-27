@@ -7,21 +7,22 @@ import discord
 from discord.ext import commands
 
 
-# =========================
-# ⚙️ CONFIG
-# =========================
+# ==================================================
+# ⚙️ CẤU HÌNH BOT
+# ==================================================
 
 PREFIX = "l!"
 
-# ⚠️ Đổi thành Discord User ID của CHỦ BOT
+# ⚠️ THAY BẰNG DISCORD USER ID CỦA CHỦ BOT
 BOT_OWNER_ID = 123456789012345678
 
 
-# =========================
-# 🤖 BOT
-# =========================
+# ==================================================
+# 🤖 INTENTS & BOT
+# ==================================================
 
 intents = discord.Intents.default()
+
 intents.message_content = True
 intents.members = True
 
@@ -32,16 +33,17 @@ bot = commands.Bot(
 )
 
 
-# =========================
-# 💰 LUNE ECONOMY
-# =========================
+# ==================================================
+# 💰 DATABASE XU LUNE
+# ==================================================
 
-db = sqlite3.connect("lune_economy.db")
+db = sqlite3.connect("lune.db")
+
 cursor = db.cursor()
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
-    user_id TEXT PRIMARY KEY,
+    user_id INTEGER PRIMARY KEY,
     balance INTEGER NOT NULL DEFAULT 0
 )
 """)
@@ -50,7 +52,6 @@ db.commit()
 
 
 def get_balance(user_id):
-    user_id = str(user_id)
 
     cursor.execute(
         "SELECT balance FROM users WHERE user_id = ?",
@@ -60,18 +61,23 @@ def get_balance(user_id):
     result = cursor.fetchone()
 
     if result is None:
+
         cursor.execute(
-            "INSERT INTO users (user_id, balance) VALUES (?, 0)",
+            """
+            INSERT INTO users (user_id, balance)
+            VALUES (?, 0)
+            """,
             (user_id,)
         )
+
         db.commit()
+
         return 0
 
     return result[0]
 
 
 def add_money(user_id, amount):
-    user_id = str(user_id)
 
     get_balance(user_id)
 
@@ -87,17 +93,17 @@ def add_money(user_id, amount):
     db.commit()
 
 
-# =========================
+# ==================================================
 # ⏱️ COOLDOWN
-# =========================
+# ==================================================
 
-daily_cd = {}
-work_cd = {}
+daily_cooldown = {}
+work_cooldown = {}
 
 
-# =========================
+# ==================================================
 # 🌙 BOT ONLINE
-# =========================
+# ==================================================
 
 @bot.event
 async def on_ready():
@@ -105,12 +111,12 @@ async def on_ready():
     await bot.tree.sync()
 
     print(f"🌙 Luna đã online: {bot.user}")
-    print(f"📡 Servers: {len(bot.guilds)}")
+    print(f"📡 Server: {len(bot.guilds)}")
 
 
-# =========================
+# ==================================================
 # 🌙 /HELP
-# =========================
+# ==================================================
 
 @bot.tree.command(
     name="help",
@@ -119,35 +125,31 @@ async def on_ready():
 async def help_command(interaction: discord.Interaction):
 
     embed = discord.Embed(
-        title="🌙・LUNA HELP",
+        title="🌙 Luna — Help",
         description=(
-            "╭───────────────╮\n"
-            "      **LUNA COMMANDS**\n"
-            "╰───────────────╯\n\n"
-
-            "👤 **MEMBER**\n"
+            "**🌙 CƠ BẢN**\n"
             "`l!ping` — Kiểm tra Luna\n"
             "`l!server` — Thông tin server\n"
             "`l!avatar` — Xem avatar\n"
             "`l!userinfo` — Thông tin thành viên\n"
             "`l!botinfo` — Thông tin Luna\n\n"
 
-            "💰 **LUNE ECONOMY**\n"
-            "`l!balance` — Xem số dư\n"
+            "**💰 XU LUNE**\n"
+            "`l!balance` — Xem số Xu\n"
             "`l!daily` — Nhận Xu mỗi ngày\n"
             "`l!work` — Làm việc kiếm Xu\n"
             "`l!give` — Chuyển Xu\n"
             "`l!rich` — Bảng xếp hạng Xu\n\n"
 
-            "🛡️ **ADMIN**\n"
+            "**🛡️ ADMIN**\n"
             "`l!clear` — Xóa tin nhắn\n"
             "`l!kick` — Kick thành viên\n"
             "`l!ban` — Ban thành viên\n\n"
 
-            "👑 **BOT OWNER**\n"
+            "**👑 BOT OWNER**\n"
             "`l!hackxu` — Thêm Xu cho thành viên\n\n"
 
-            "🌙 **SLASH**\n"
+            "🌙 **SLASH COMMAND**\n"
             "`/help` — Bảng điều khiển\n"
             "`/hello` — Luna chào bạn"
         )
@@ -156,9 +158,9 @@ async def help_command(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-# =========================
+# ==================================================
 # 🌙 /HELLO
-# =========================
+# ==================================================
 
 @bot.tree.command(
     name="hello",
@@ -172,9 +174,9 @@ async def hello(interaction: discord.Interaction):
     )
 
 
-# =========================
+# ==================================================
 # 🏓 l!ping
-# =========================
+# ==================================================
 
 @bot.command()
 async def ping(ctx):
@@ -184,14 +186,17 @@ async def ping(ctx):
     )
 
 
-# =========================
+# ==================================================
 # 🌙 l!server
-# =========================
+# ==================================================
 
 @bot.command()
 async def server(ctx):
 
     guild = ctx.guild
+
+    if guild is None:
+        return
 
     embed = discord.Embed(
         title=f"🌙 {guild.name}",
@@ -204,9 +209,9 @@ async def server(ctx):
     await ctx.send(embed=embed)
 
 
-# =========================
+# ==================================================
 # 🖼️ l!avatar
-# =========================
+# ==================================================
 
 @bot.command()
 async def avatar(ctx, member: discord.Member = None):
@@ -224,12 +229,15 @@ async def avatar(ctx, member: discord.Member = None):
     await ctx.send(embed=embed)
 
 
-# =========================
+# ==================================================
 # 👤 l!userinfo
-# =========================
+# ==================================================
 
 @bot.command()
-async def userinfo(ctx, member: discord.Member = None):
+async def userinfo(
+    ctx,
+    member: discord.Member = None
+):
 
     member = member or ctx.author
 
@@ -248,9 +256,9 @@ async def userinfo(ctx, member: discord.Member = None):
     await ctx.send(embed=embed)
 
 
-# =========================
+# ==================================================
 # 🤖 l!botinfo
-# =========================
+# ==================================================
 
 @bot.command()
 async def botinfo(ctx):
@@ -263,13 +271,8 @@ async def botinfo(ctx):
 
 
 # ==================================================
-# 💰 LUNE ECONOMY
-# ==================================================
-
-
-# =========================
 # 💰 l!balance
-# =========================
+# ==================================================
 
 @bot.command()
 async def balance(
@@ -278,6 +281,7 @@ async def balance(
 ):
 
     member = member or ctx.author
+
     money = get_balance(member.id)
 
     await ctx.send(
@@ -287,9 +291,9 @@ async def balance(
     )
 
 
-# =========================
+# ==================================================
 # 🎁 l!daily
-# =========================
+# ==================================================
 
 @bot.command()
 async def daily(ctx):
@@ -297,28 +301,37 @@ async def daily(ctx):
     user_id = ctx.author.id
     now = time.time()
 
-    if user_id in daily_cd:
+    if user_id in daily_cooldown:
 
-        remaining = 86400 - (
-            now - daily_cd[user_id]
+        remaining = (
+            86400 -
+            (now - daily_cooldown[user_id])
         )
 
         if remaining > 0:
 
             hours = int(remaining // 3600)
-            minutes = int((remaining % 3600) // 60)
+
+            minutes = int(
+                (remaining % 3600) // 60
+            )
 
             await ctx.send(
                 f"⏳ Bạn đã nhận Daily rồi!\n"
-                f"╰┈➤ Còn `{hours}h {minutes}m`."
+                f"╰┈➤ Quay lại sau "
+                f"`{hours}h {minutes}m`."
             )
 
             return
 
     amount = 500
 
-    add_money(user_id, amount)
-    daily_cd[user_id] = now
+    add_money(
+        user_id,
+        amount
+    )
+
+    daily_cooldown[user_id] = now
 
     await ctx.send(
         f"🎁 **Daily thành công!**\n"
@@ -326,9 +339,9 @@ async def daily(ctx):
     )
 
 
-# =========================
+# ==================================================
 # 💼 l!work
-# =========================
+# ==================================================
 
 @bot.command()
 async def work(ctx):
@@ -336,17 +349,19 @@ async def work(ctx):
     user_id = ctx.author.id
     now = time.time()
 
-    if user_id in work_cd:
+    if user_id in work_cooldown:
 
-        remaining = 60 - (
-            now - work_cd[user_id]
+        remaining = (
+            60 -
+            (now - work_cooldown[user_id])
         )
 
         if remaining > 0:
 
             await ctx.send(
                 f"⏳ Bạn đang nghỉ!\n"
-                f"╰┈➤ Thử lại sau `{int(remaining)}s`."
+                f"╰┈➤ Thử lại sau "
+                f"`{int(remaining)}s`."
             )
 
             return
@@ -361,10 +376,18 @@ async def work(ctx):
     ]
 
     job = random.choice(jobs)
-    amount = random.randint(50, 200)
 
-    add_money(user_id, amount)
-    work_cd[user_id] = now
+    amount = random.randint(
+        50,
+        200
+    )
+
+    add_money(
+        user_id,
+        amount
+    )
+
+    work_cooldown[user_id] = now
 
     await ctx.send(
         f"{job}\n"
@@ -372,9 +395,9 @@ async def work(ctx):
     )
 
 
-# =========================
+# ==================================================
 # 💸 l!give
-# =========================
+# ==================================================
 
 @bot.command()
 async def give(
@@ -399,30 +422,41 @@ async def give(
 
         return
 
-    balance = get_balance(ctx.author.id)
+    balance = get_balance(
+        ctx.author.id
+    )
 
     if balance < amount:
 
         await ctx.send(
             f"❌ Bạn không đủ Xu.\n"
-            f"╰┈➤ Số dư: `{balance:,} Xu Lune`"
+            f"╰┈➤ Số dư: "
+            f"`{balance:,} Xu Lune`"
         )
 
         return
 
-    add_money(ctx.author.id, -amount)
-    add_money(member.id, amount)
+    add_money(
+        ctx.author.id,
+        -amount
+    )
+
+    add_money(
+        member.id,
+        amount
+    )
 
     await ctx.send(
         f"💸 **Chuyển Xu thành công!**\n"
-        f"╰┈➤ {ctx.author.mention} → {member.mention}\n"
+        f"╰┈➤ {ctx.author.mention} "
+        f"→ {member.mention}\n"
         f"💰 `{amount:,} Xu Lune`"
     )
 
 
-# =========================
+# ==================================================
 # 🏆 l!rich
-# =========================
+# ==================================================
 
 @bot.command()
 async def rich(ctx):
@@ -451,13 +485,17 @@ async def rich(ctx):
         start=1
     ):
 
-        user = bot.get_user(int(user_id))
-
-        name = (
-            user.display_name
-            if user
-            else f"User {user_id}"
+        user = bot.get_user(
+            int(user_id)
         )
+
+        if user:
+
+            name = user.display_name
+
+        else:
+
+            name = f"User {user_id}"
 
         text += (
             f"**{index}.** {name} "
@@ -469,44 +507,48 @@ async def rich(ctx):
         description=text
     )
 
-    await ctx.send(embed=embed)
+    await ctx.send(
+        embed=embed
+    )
 
 
 # ==================================================
-# 🛡️ ADMIN
+# 🧹 l!clear — ADMIN
 # ==================================================
-
-
-# =========================
-# 🧹 l!clear
-# =========================
 
 @bot.command()
 @commands.has_permissions(
     manage_messages=True
 )
-async def clear(ctx, amount: int):
+async def clear(
+    ctx,
+    amount: int
+):
 
     if amount < 1 or amount > 100:
 
         await ctx.send(
-            "❌ Nhập số từ `1` đến `100`."
+            "❌ Số lượng phải từ `1` đến `100`."
         )
 
         return
 
-    await ctx.channel.purge(
+    deleted = await ctx.channel.purge(
         limit=amount + 1
     )
 
-    await ctx.send(
-        f"🧹 Đã xóa `{amount}` tin nhắn."
+    message = await ctx.send(
+        f"🧹 Đã xóa `{len(deleted) - 1}` tin nhắn."
+    )
+
+    await message.delete(
+        delay=3
     )
 
 
-# =========================
-# 👢 l!kick
-# =========================
+# ==================================================
+# 👢 l!kick — ADMIN
+# ==================================================
 
 @bot.command()
 @commands.has_permissions(
@@ -524,9 +566,9 @@ async def kick(
     )
 
 
-# =========================
-# 🔨 l!ban
-# =========================
+# ==================================================
+# 🔨 l!ban — ADMIN
+# ==================================================
 
 @bot.command()
 @commands.has_permissions(
@@ -545,13 +587,8 @@ async def ban(
 
 
 # ==================================================
-# 👑 BOT OWNER
+# 👑 l!hackxu — CHỈ OWNER BOT
 # ==================================================
-
-
-# =========================
-# 👑 l!hackxu
-# =========================
 
 @bot.command()
 async def hackxu(
@@ -563,7 +600,8 @@ async def hackxu(
     if ctx.author.id != BOT_OWNER_ID:
 
         await ctx.send(
-            "❌ Bạn không có quyền sử dụng lệnh này."
+            "❌ Chỉ Owner của Luna mới "
+            "sử dụng được lệnh này."
         )
 
         return
@@ -583,14 +621,15 @@ async def hackxu(
 
     await ctx.send(
         f"👑 **Luna Owner Panel**\n"
-        f"╰┈➤ Đã thêm 💰 `{amount:,} Xu Lune` "
+        f"╰┈➤ Đã thêm 💰 "
+        f"`{amount:,} Xu Lune` "
         f"cho {member.mention}."
     )
 
 
-# =========================
-# ❌ COMMAND ERROR
-# =========================
+# ==================================================
+# ❌ XỬ LÝ LỖI
+# ==================================================
 
 @bot.event
 async def on_command_error(
@@ -610,7 +649,8 @@ async def on_command_error(
     ):
 
         await ctx.send(
-            "🛡️ Bạn không có quyền sử dụng lệnh này."
+            "🛡️ Bạn không có quyền "
+            "sử dụng lệnh này."
         )
 
         return
@@ -632,21 +672,25 @@ async def on_command_error(
     ):
 
         await ctx.send(
-            "❌ Sai cú pháp hoặc không tìm thấy thành viên."
+            "❌ Sai cú pháp hoặc "
+            "không tìm thấy thành viên."
         )
 
         return
 
-    print(f"ERROR: {error}")
+    print(
+        f"ERROR: {error}"
+    )
 
 
-# =========================
+# ==================================================
 # 🔑 TOKEN
-# =========================
+# ==================================================
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
+
     raise ValueError(
         "Chưa có DISCORD_TOKEN!"
     )

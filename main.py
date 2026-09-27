@@ -14,7 +14,7 @@ from discord.ext import commands
 PREFIX = "l!"
 
 # ⚠️ THAY BẰNG DISCORD USER ID CỦA CHỦ BOT
-BOT_OWNER_ID = 123456789012345678
+BOT_OWNER_ID = 1522168539178598592
 
 
 # ==================================================

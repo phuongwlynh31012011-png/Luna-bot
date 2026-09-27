@@ -1,11 +1,9 @@
 import os
 import discord
 from discord.ext import commands
-from datetime import timedelta
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True
 
 bot = commands.Bot(
     command_prefix="l!",
@@ -14,10 +12,6 @@ bot = commands.Bot(
 )
 
 
-# =========================
-# BOT ONLINE
-# =========================
-
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -25,31 +19,37 @@ async def on_ready():
 
 
 # =========================
-# SLASH: /help
+# /help
 # =========================
 
 @bot.tree.command(
     name="help",
-    description="Mở bảng điều khiển lệnh của Luna"
+    description="Xem bảng điều khiển lệnh của Luna"
 )
 async def help_command(interaction: discord.Interaction):
 
     embed = discord.Embed(
-        title="🌙・LUNA HELP",
+        title="🌙 Luna — Help",
         description=(
-            "╰┈➤ Bảng điều khiển lệnh Luna\n\n"
+            "╭───────────────╮\n"
+            "     **LUNA COMMANDS**\n"
+            "╰───────────────╯\n\n"
+
             "👤 **MEMBER**\n"
             "`l!ping` — Kiểm tra Luna\n"
-            "`l!avatar` — Xem avatar\n"
             "`l!server` — Thông tin server\n"
+            "`l!avatar` — Xem avatar\n"
             "`l!userinfo` — Thông tin thành viên\n"
             "`l!botinfo` — Thông tin Luna\n\n"
 
             "🛡️ **ADMIN**\n"
             "`l!clear` — Xóa tin nhắn\n"
             "`l!kick` — Kick thành viên\n"
-            "`l!ban` — Ban thành viên\n"
-            "`l!timeout` — Timeout thành viên"
+            "`l!ban` — Ban thành viên\n\n"
+
+            "🌙 **SLASH**\n"
+            "`/help` — Bảng điều khiển\n"
+            "`/hello` — Luna chào bạn"
         )
     )
 
@@ -57,7 +57,7 @@ async def help_command(interaction: discord.Interaction):
 
 
 # =========================
-# SLASH: /hello
+# /hello
 # =========================
 
 @bot.tree.command(
@@ -68,7 +68,7 @@ async def hello(interaction: discord.Interaction):
 
     await interaction.response.send_message(
         f"🌙 Xin chào {interaction.user.mention}!\n"
-        "╰┈➤ Chào mừng bạn đến với Lune Haven ♡"
+        "╰┈➤ Chào mừng bạn đến với **Lune Haven** ♡"
     )
 
 
@@ -79,30 +79,9 @@ async def hello(interaction: discord.Interaction):
 @bot.command()
 async def ping(ctx):
 
-    ping = round(bot.latency * 1000)
-
     await ctx.send(
-        f"🌙 **Luna Pong!**\n"
-        f"╰┈➤ `{ping}ms`"
+        f"🏓 Pong! `{round(bot.latency * 1000)}ms`"
     )
-
-
-# =========================
-# l!avatar
-# =========================
-
-@bot.command()
-async def avatar(ctx, member: discord.Member = None):
-
-    member = member or ctx.author
-
-    embed = discord.Embed(
-        title=f"🌙 Avatar — {member.display_name}"
-    )
-
-    embed.set_image(url=member.display_avatar.url)
-
-    await ctx.send(embed=embed)
 
 
 # =========================
@@ -114,10 +93,23 @@ async def server(ctx):
 
     guild = ctx.guild
 
+    embed = discord.Embed(
+        title=f"🌙 {guild.name}",
+        description=f"👥 Thành viên: `{guild.member_count}`"
+    )
+
+    await ctx.send(embed=embed)
+
+
+# =========================
+# l!avatar
+# =========================
+
+@bot.command()
+async def avatar(ctx):
+
     await ctx.send(
-        f"🌙 **{guild.name}**\n"
-        f"👥 Thành viên: `{guild.member_count}`\n"
-        f"🆔 ID: `{guild.id}`"
+        ctx.author.display_avatar.url
     )
 
 
@@ -126,19 +118,21 @@ async def server(ctx):
 # =========================
 
 @bot.command()
-async def userinfo(ctx, member: discord.Member = None):
+async def userinfo(ctx):
 
-    member = member or ctx.author
+    member = ctx.author
 
     embed = discord.Embed(
-        title=f"👤・{member.display_name}",
+        title=f"👤 {member.display_name}",
         description=(
             f"Username: `{member.name}`\n"
             f"ID: `{member.id}`"
         )
     )
 
-    embed.set_thumbnail(url=member.display_avatar.url)
+    embed.set_thumbnail(
+        url=member.display_avatar.url
+    )
 
     await ctx.send(embed=embed)
 
@@ -152,12 +146,13 @@ async def botinfo(ctx):
 
     await ctx.send(
         "🌙 **Luna**\n"
-        "Bot đồng hành của **Lune Haven**."
+        "Bot đồng hành của **Lune Haven**.\n"
+        "Quản lý • Tiện ích • Giải trí"
     )
 
 
 # =========================
-# ADMIN: l!clear
+# l!clear — ADMIN
 # =========================
 
 @bot.command()
@@ -170,110 +165,39 @@ async def clear(ctx, amount: int):
 
     await ctx.channel.purge(limit=amount + 1)
 
-    msg = await ctx.send(
+    await ctx.send(
         f"🧹 Đã xóa `{amount}` tin nhắn."
     )
 
-    await msg.delete(delay=3)
-
 
 # =========================
-# ADMIN: l!kick
+# l!kick — ADMIN
 # =========================
 
 @bot.command()
 @commands.has_permissions(kick_members=True)
-async def kick(
-    ctx,
-    member: discord.Member,
-    *,
-    reason="Không có lý do"
-):
+async def kick(ctx, member: discord.Member):
 
-    await member.kick(reason=reason)
+    await member.kick()
 
     await ctx.send(
-        f"👢 Đã kick {member.mention}\n"
-        f"📝 Lý do: {reason}"
+        f"👢 Đã kick {member.mention}."
     )
 
 
 # =========================
-# ADMIN: l!ban
+# l!ban — ADMIN
 # =========================
 
 @bot.command()
 @commands.has_permissions(ban_members=True)
-async def ban(
-    ctx,
-    member: discord.Member,
-    *,
-    reason="Không có lý do"
-):
+async def ban(ctx, member: discord.Member):
 
-    await member.ban(reason=reason)
+    await member.ban()
 
     await ctx.send(
-        f"🔨 Đã ban {member.mention}\n"
-        f"📝 Lý do: {reason}"
+        f"🔨 Đã ban {member.mention}."
     )
-
-
-# =========================
-# ADMIN: l!timeout
-# =========================
-
-@bot.command()
-@commands.has_permissions(moderate_members=True)
-async def timeout(
-    ctx,
-    member: discord.Member,
-    minutes: int,
-    *,
-    reason="Không có lý do"
-):
-
-    if minutes < 1 or minutes > 40320:
-        await ctx.send(
-            "❌ Thời gian phải từ `1` đến `40320` phút."
-        )
-        return
-
-    await member.timeout(
-        timedelta(minutes=minutes),
-        reason=reason
-    )
-
-    await ctx.send(
-        f"🔇 Đã timeout {member.mention} "
-        f"trong `{minutes}` phút.\n"
-        f"📝 Lý do: {reason}"
-    )
-
-
-# =========================
-# LỖI QUYỀN
-# =========================
-
-@bot.event
-async def on_command_error(ctx, error):
-
-    if isinstance(error, commands.CommandNotFound):
-        return
-
-    if isinstance(error, commands.MissingPermissions):
-        await ctx.send(
-            "🛡️ Bạn không có quyền sử dụng lệnh này."
-        )
-        return
-
-    if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(
-            "❌ Bạn chưa nhập đủ thông tin."
-        )
-        return
-
-    print(f"ERROR: {error}")
 
 
 # =========================
@@ -283,8 +207,6 @@ async def on_command_error(ctx, error):
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
-    raise ValueError(
-        "❌ Chưa tìm thấy DISCORD_TOKEN trên Railway."
-    )
+    raise ValueError("Chưa có DISCORD_TOKEN!")
 
 bot.run(TOKEN)

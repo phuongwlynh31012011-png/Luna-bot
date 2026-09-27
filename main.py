@@ -155,10 +155,6 @@ async def botinfo(ctx):
 # 🌙 LUNE ECONOMY
 # =========================
 
-import sqlite3
-import random
-import time
-
 # ID Discord của CHỦ SỞ HỮU BOT
 BOT_OWNER_ID = 123456789012345678
 

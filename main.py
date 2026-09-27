@@ -152,6 +152,299 @@ async def botinfo(ctx):
 
 
 # =========================
+# 🌙 LUNE ECONOMY
+# =========================
+
+import sqlite3
+import random
+import time
+
+# ID Discord của CHỦ SỞ HỮU BOT
+BOT_OWNER_ID = 123456789012345678
+
+db = sqlite3.connect("lune_economy.db")
+cursor = db.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    user_id TEXT PRIMARY KEY,
+    balance INTEGER NOT NULL DEFAULT 0
+)
+""")
+
+db.commit()
+
+
+def get_balance(user_id):
+    user_id = str(user_id)
+
+    cursor.execute(
+        "SELECT balance FROM users WHERE user_id = ?",
+        (user_id,)
+    )
+
+    result = cursor.fetchone()
+
+    if result is None:
+        cursor.execute(
+            "INSERT INTO users (user_id, balance) VALUES (?, 0)",
+            (user_id,)
+        )
+        db.commit()
+        return 0
+
+    return result[0]
+
+
+def add_money(user_id, amount):
+    user_id = str(user_id)
+
+    get_balance(user_id)
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET balance = balance + ?
+        WHERE user_id = ?
+        """,
+        (amount, user_id)
+    )
+
+    db.commit()
+
+
+# =========================
+# 💰 l!balance
+# =========================
+
+@bot.command()
+async def balance(ctx, member: discord.Member = None):
+
+    member = member or ctx.author
+    money = get_balance(member.id)
+
+    await ctx.send(
+        f"🌙 **Ví Xu Lune**\n"
+        f"👤 {member.mention}\n"
+        f"💰 `{money:,} Xu Lune`"
+    )
+
+
+# =========================
+# 🎁 l!daily
+# =========================
+
+daily_cd = {}
+
+@bot.command()
+async def daily(ctx):
+
+    user_id = ctx.author.id
+    now = time.time()
+
+    if user_id in daily_cd:
+
+        remaining = 86400 - (
+            now - daily_cd[user_id]
+        )
+
+        if remaining > 0:
+
+            hours = int(remaining // 3600)
+            minutes = int((remaining % 3600) // 60)
+
+            await ctx.send(
+                f"⏳ Bạn đã nhận Daily rồi!\n"
+                f"╰┈➤ Còn `{hours}h {minutes}m`."
+            )
+            return
+
+    amount = 500
+
+    add_money(user_id, amount)
+    daily_cd[user_id] = now
+
+    await ctx.send(
+        f"🎁 **Daily thành công!**\n"
+        f"╰┈➤ +💰 `{amount:,} Xu Lune`"
+    )
+
+
+# =========================
+# 💼 l!work
+# =========================
+
+work_cd = {}
+
+@bot.command()
+async def work(ctx):
+
+    user_id = ctx.author.id
+    now = time.time()
+
+    if user_id in work_cd:
+
+        remaining = 60 - (
+            now - work_cd[user_id]
+        )
+
+        if remaining > 0:
+
+            await ctx.send(
+                f"⏳ Bạn đang nghỉ!\n"
+                f"╰┈➤ Thử lại sau `{int(remaining)}s`."
+            )
+            return
+
+    jobs = [
+        "🌙 Trực đêm tại Lune Haven",
+        "☕ Làm việc tại quán cà phê",
+        "🎮 Chơi game cùng thành viên",
+        "🎧 Chạy nhạc cho server",
+        "📖 Hỗ trợ thành viên",
+        "✨ Làm nhiệm vụ tại Lune Haven"
+    ]
+
+    job = random.choice(jobs)
+    amount = random.randint(50, 200)
+
+    add_money(user_id, amount)
+    work_cd[user_id] = now
+
+    await ctx.send(
+        f"{job}\n"
+        f"╰┈➤ +💰 `{amount:,} Xu Lune`"
+    )
+
+
+# =========================
+# 💸 l!give
+# =========================
+
+@bot.command()
+async def give(
+    ctx,
+    member: discord.Member,
+    amount: int
+):
+
+    if member == ctx.author:
+        await ctx.send(
+            "❌ Không thể tự chuyển Xu cho mình."
+        )
+        return
+
+    if amount <= 0:
+        await ctx.send(
+            "❌ Số Xu phải lớn hơn 0."
+        )
+        return
+
+    balance = get_balance(ctx.author.id)
+
+    if balance < amount:
+
+        await ctx.send(
+            f"❌ Bạn không đủ Xu.\n"
+            f"╰┈➤ Số dư: `{balance:,} Xu Lune`"
+        )
+        return
+
+    add_money(ctx.author.id, -amount)
+    add_money(member.id, amount)
+
+    await ctx.send(
+        f"💸 **Chuyển Xu thành công!**\n"
+        f"╰┈➤ {ctx.author.mention} → {member.mention}\n"
+        f"💰 `{amount:,} Xu Lune`"
+    )
+
+
+# =========================
+# 🏆 l!rich
+# =========================
+
+@bot.command()
+async def rich(ctx):
+
+    cursor.execute("""
+        SELECT user_id, balance
+        FROM users
+        ORDER BY balance DESC
+        LIMIT 10
+    """)
+
+    users = cursor.fetchall()
+
+    if not users:
+        await ctx.send(
+            "🌙 Chưa có dữ liệu Xu Lune."
+        )
+        return
+
+    text = ""
+
+    for index, (user_id, money) in enumerate(
+        users, start=1
+    ):
+
+        user = bot.get_user(int(user_id))
+
+        name = (
+            user.display_name
+            if user
+            else f"User {user_id}"
+        )
+
+        text += (
+            f"**{index}.** {name}"
+            f" — 💰 `{money:,}` Xu\n"
+        )
+
+    embed = discord.Embed(
+        title="🏆・LUNE RICH",
+        description=text
+    )
+
+    await ctx.send(embed=embed)
+
+
+# =========================
+# 👑 l!hackxu
+# CHỈ OWNER BOT
+# =========================
+
+@bot.command()
+async def hackxu(
+    ctx,
+    member: discord.Member,
+    amount: int
+):
+
+    if ctx.author.id != BOT_OWNER_ID:<@1522168539178598592>
+
+        await ctx.send(
+            "❌ Bạn không có quyền sử dụng lệnh này."
+        )
+        return
+
+    if amount <= 0:
+
+        await ctx.send(
+            "❌ Số Xu phải lớn hơn 0."
+        )
+        return
+
+    add_money(member.id, amount)
+
+    await ctx.send(
+        f"👑 **Luna Owner Panel**\n"
+        f"💰 Đã thêm `{amount:,} Xu Lune` cho "
+        f"{member.mention}."
+    )
+
+
+# =========================
 # l!clear — ADMIN
 # =========================
 

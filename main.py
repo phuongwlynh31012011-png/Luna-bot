@@ -1,7 +1,7 @@
 import os
 import discord
-from discord import app_commands
 from discord.ext import commands
+from datetime import timedelta
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -14,6 +14,10 @@ bot = commands.Bot(
 )
 
 
+# =========================
+# BOT ONLINE
+# =========================
+
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -21,19 +25,19 @@ async def on_ready():
 
 
 # =========================
-# /HELP
+# SLASH: /help
 # =========================
 
 @bot.tree.command(
     name="help",
-    description="Mở bảng điều khiển Luna"
+    description="Mở bảng điều khiển lệnh của Luna"
 )
 async def help_command(interaction: discord.Interaction):
 
     embed = discord.Embed(
         title="🌙・LUNA HELP",
         description=(
-            "Chào mừng đến với bảng điều khiển Luna.\n\n"
+            "╰┈➤ Bảng điều khiển lệnh Luna\n\n"
             "👤 **MEMBER**\n"
             "`l!ping` — Kiểm tra Luna\n"
             "`l!avatar` — Xem avatar\n"
@@ -45,11 +49,7 @@ async def help_command(interaction: discord.Interaction):
             "`l!clear` — Xóa tin nhắn\n"
             "`l!kick` — Kick thành viên\n"
             "`l!ban` — Ban thành viên\n"
-            "`l!timeout` — Timeout thành viên\n\n"
-
-            "🌙 **SLASH COMMAND**\n"
-            "`/help` — Bảng điều khiển\n"
-            "`/hello` — Luna chào bạn"
+            "`l!timeout` — Timeout thành viên"
         )
     )
 
@@ -57,7 +57,7 @@ async def help_command(interaction: discord.Interaction):
 
 
 # =========================
-# /HELLO
+# SLASH: /hello
 # =========================
 
 @bot.tree.command(
@@ -73,22 +73,22 @@ async def hello(interaction: discord.Interaction):
 
 
 # =========================
-# l!PING
+# l!ping
 # =========================
 
 @bot.command()
 async def ping(ctx):
 
-    ms = round(bot.latency * 1000)
+    ping = round(bot.latency * 1000)
 
     await ctx.send(
         f"🌙 **Luna Pong!**\n"
-        f"╰┈➤ Ping: `{ms}ms`"
+        f"╰┈➤ `{ping}ms`"
     )
 
 
 # =========================
-# l!AVATAR
+# l!avatar
 # =========================
 
 @bot.command()
@@ -99,13 +99,14 @@ async def avatar(ctx, member: discord.Member = None):
     embed = discord.Embed(
         title=f"🌙 Avatar — {member.display_name}"
     )
+
     embed.set_image(url=member.display_avatar.url)
 
     await ctx.send(embed=embed)
 
 
 # =========================
-# l!SERVER
+# l!server
 # =========================
 
 @bot.command()
@@ -121,7 +122,7 @@ async def server(ctx):
 
 
 # =========================
-# l!USERINFO
+# l!userinfo
 # =========================
 
 @bot.command()
@@ -143,7 +144,7 @@ async def userinfo(ctx, member: discord.Member = None):
 
 
 # =========================
-# l!BOTINFO
+# l!botinfo
 # =========================
 
 @bot.command()
@@ -156,7 +157,7 @@ async def botinfo(ctx):
 
 
 # =========================
-# ADMIN — l!CLEAR
+# ADMIN: l!clear
 # =========================
 
 @bot.command()
@@ -164,7 +165,7 @@ async def botinfo(ctx):
 async def clear(ctx, amount: int):
 
     if amount < 1 or amount > 100:
-        await ctx.send("❌ Số lượng phải từ 1 đến 100.")
+        await ctx.send("❌ Nhập số từ `1` đến `100`.")
         return
 
     await ctx.channel.purge(limit=amount + 1)
@@ -177,12 +178,17 @@ async def clear(ctx, amount: int):
 
 
 # =========================
-# ADMIN — l!KICK
+# ADMIN: l!kick
 # =========================
 
 @bot.command()
 @commands.has_permissions(kick_members=True)
-async def kick(ctx, member: discord.Member, *, reason="Không có lý do"):
+async def kick(
+    ctx,
+    member: discord.Member,
+    *,
+    reason="Không có lý do"
+):
 
     await member.kick(reason=reason)
 
@@ -193,12 +199,17 @@ async def kick(ctx, member: discord.Member, *, reason="Không có lý do"):
 
 
 # =========================
-# ADMIN — l!BAN
+# ADMIN: l!ban
 # =========================
 
 @bot.command()
 @commands.has_permissions(ban_members=True)
-async def ban(ctx, member: discord.Member, *, reason="Không có lý do"):
+async def ban(
+    ctx,
+    member: discord.Member,
+    *,
+    reason="Không có lý do"
+):
 
     await member.ban(reason=reason)
 
@@ -209,12 +220,71 @@ async def ban(ctx, member: discord.Member, *, reason="Không có lý do"):
 
 
 # =========================
+# ADMIN: l!timeout
+# =========================
+
+@bot.command()
+@commands.has_permissions(moderate_members=True)
+async def timeout(
+    ctx,
+    member: discord.Member,
+    minutes: int,
+    *,
+    reason="Không có lý do"
+):
+
+    if minutes < 1 or minutes > 40320:
+        await ctx.send(
+            "❌ Thời gian phải từ `1` đến `40320` phút."
+        )
+        return
+
+    await member.timeout(
+        timedelta(minutes=minutes),
+        reason=reason
+    )
+
+    await ctx.send(
+        f"🔇 Đã timeout {member.mention} "
+        f"trong `{minutes}` phút.\n"
+        f"📝 Lý do: {reason}"
+    )
+
+
+# =========================
+# LỖI QUYỀN
+# =========================
+
+@bot.event
+async def on_command_error(ctx, error):
+
+    if isinstance(error, commands.CommandNotFound):
+        return
+
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send(
+            "🛡️ Bạn không có quyền sử dụng lệnh này."
+        )
+        return
+
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(
+            "❌ Bạn chưa nhập đủ thông tin."
+        )
+        return
+
+    print(f"ERROR: {error}")
+
+
+# =========================
 # TOKEN
 # =========================
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
-    raise ValueError("❌ Chưa có DISCORD_TOKEN trên Railway.")
+    raise ValueError(
+        "❌ Chưa tìm thấy DISCORD_TOKEN trên Railway."
+    )
 
 bot.run(TOKEN)

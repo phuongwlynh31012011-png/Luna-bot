@@ -8,8 +8,8 @@ import os, json, random, time
 
 TOKEN = os.getenv("TOKEN")
 
-# 👑 ID OWNER BOT — thay số này bằng ID Discord của bạn
-OWNER_ID = 123456789012345678
+# 👑 ID OWNER BOT 
+OWNER_ID = 1522168539178598592
 
 PREFIX = "l!"
 DATA_FILE = "data.json"
@@ -256,7 +256,7 @@ async def on_member_join(member):
 
 @bot.tree.command(
     name="hello",
-    description="Luna chào bạn"
+    description="Helo bbi"
 )
 async def hello(interaction):
 

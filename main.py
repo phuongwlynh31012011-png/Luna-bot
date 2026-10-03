@@ -1,1233 +1,929 @@
+
+import os
+import json
+import random
+import re
+import asyncio
+from datetime import datetime, timedelta, timezone
+
 import discord
 from discord.ext import commands
-import os, json, random, time
+from discord import app_commands
 
-# =========================================================
-# 🌙 LUNA BOT
-# =========================================================
+# ============================================================
+# LUNA BOT - SINGLE FILE
+# Prefix: l!
+# Slash: /help, /hello
+# ============================================================
 
-TOKEN = os.getenv("TOKEN")
+TOKEN = os.getenv("TOKEN", "").strip()
+OWNER_ID = int(os.getenv("OWNER_ID", "0") or 0)
 
-# 👑 ID OWNER BOT 
-OWNER_ID = 1522168539178598592
-
-PREFIX = "l!"
-DATA_FILE = "data.json"
+DATA_FILE = "luna_data.json"
 
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
+intents.guilds = True
+intents.reactions = True
 
-bot = commands.Bot(
-    command_prefix=PREFIX,
-    intents=intents,
-    help_command=None
-)
+bot = commands.Bot(command_prefix="l!", intents=intents, help_command=None)
 
+DEFAULT_WELCOME = {
+    "enabled": False,
+    "channel": 0,
+    "role": 0,
+    "image": "",
+    "color": 0xB8D8FF,
+    "title": "🌙 • CHÀO MỪNG THÀNH VIÊN",
+    "message": (
+        "🌙 Chào mừng {member} đến với **{server}**.\n\n"
+        "Giữa vô vàn nơi để dừng chân, thật vui vì hôm nay bạn đã ghé qua đây. ♡\n\n"
+        "Hãy cứ thoải mái trò chuyện, tìm người chơi cùng, "
+        "bật mic khi muốn, hay đơn giản là ngồi chill một chút dưới ánh trăng.\n\n"
+        "✨ Thành viên thứ **{count}** của server."
+    )
+}
 
-# =========================================================
-# 💾 DATA
-# =========================================================
+DEFAULT_GUILD = {
+    "welcome": DEFAULT_WELCOME,
+    "economy": {},
+    "warnings": {},
+    "shop": {
+        "rose": {"name": "🌹 Hoa hồng", "price": 500},
+        "choco": {"name": "🍫 Socola", "price": 800},
+        "moon": {"name": "🌙 Mảnh trăng", "price": 1500},
+    },
+    "giveaways": {},
+    "modlog": 0
+}
+
+data = {}
+
 
 def load_data():
+    global data
     if not os.path.exists(DATA_FILE):
-        return {
-            "balances": {},
-            "cooldowns": {},
-            "welcome": {}
-        }
-
+        data = {"guilds": {}}
+        save_data()
+        return
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-
-        data.setdefault("balances", {})
-        data.setdefault("cooldowns", {})
-        data.setdefault("welcome", {})
-        return data
-
-    except:
-        return {
-            "balances": {},
-            "cooldowns": {},
-            "welcome": {}
-        }
-
-
-data = load_data()
+    except Exception:
+        data = {"guilds": {}}
+        save_data()
 
 
 def save_data():
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(
-            data,
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-# =========================================================
-# 💰 XU LUNE
-# =========================================================
-
-def balance(user_id):
-    return int(
-        data["balances"].get(
-            str(user_id),
-            0
-        )
-    )
-
-
-def add_xu(user_id, amount):
-    uid = str(user_id)
-    data["balances"][uid] = balance(user_id) + amount
-    save_data()
-
-
-def remove_xu(user_id, amount):
-    if balance(user_id) < amount:
-        return False
-
-    data["balances"][str(user_id)] = (
-        balance(user_id) - amount
-    )
-    save_data()
-    return True
-
-
-# =========================================================
-# ⏳ COOLDOWN
-# =========================================================
-
-def get_cd(user_id, name):
-    return float(
-        data["cooldowns"]
-        .get(str(user_id), {})
-        .get(name, 0)
-    )
-
-
-def set_cd(user_id, name):
-    uid = str(user_id)
-
-    if uid not in data["cooldowns"]:
-        data["cooldowns"][uid] = {}
-
-    data["cooldowns"][uid][name] = time.time()
-    save_data()
-
-
-def cd_left(user_id, name, seconds):
-    last = get_cd(user_id, name)
-    return max(
-        0,
-        seconds - (time.time() - last)
-    )
-
-
-# =========================================================
-# 👋 WELCOME RIÊNG TỪNG SERVER
-# =========================================================
-
-def default_welcome():
-    return {
-        "enabled": False,
-        "channel": None,
-        "role": None,
-        "image": None,
-        "color": 0xBDEFFF,
-        "message": (
-            "🌙 **Chào mừng {user} đến với {server}!** ♡\n\n"
-            "Chúc bạn có những phút giây thật vui vẻ tại đây."
-        )
-    }
-
-
-def get_welcome(guild_id):
+def guild_data(guild_id: int):
     gid = str(guild_id)
-
-    if gid not in data["welcome"]:
-        data["welcome"][gid] = default_welcome()
+    if gid not in data.setdefault("guilds", {}):
+        data["guilds"][gid] = json.loads(json.dumps(DEFAULT_GUILD))
         save_data()
+    g = data["guilds"][gid]
+    g.setdefault("welcome", json.loads(json.dumps(DEFAULT_WELCOME)))
+    g.setdefault("economy", {})
+    g.setdefault("warnings", {})
+    g.setdefault("shop", json.loads(json.dumps(DEFAULT_GUILD["shop"])))
+    g.setdefault("giveaways", {})
+    g.setdefault("modlog", 0)
+    return g
 
-    return data["welcome"][gid]
+
+def account(guild_id: int, user_id: int):
+    g = guild_data(guild_id)
+    uid = str(user_id)
+    if uid not in g["economy"]:
+        g["economy"][uid] = {
+            "coins": 0,
+            "daily": 0,
+            "work": 0,
+            "items": {}
+        }
+        save_data()
+    return g["economy"][uid]
 
 
-# =========================================================
-# 🌙 BOT ONLINE
-# =========================================================
+def fmt_coins(n):
+    return f"{int(n):,}"
+
+
+def parse_duration(value: str):
+    m = re.fullmatch(r"(\d+)(s|m|h|d|w)", value.lower())
+    if not m:
+        return None
+    number = int(m.group(1))
+    return number * {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}[m.group(2)]
+
+
+def parse_hex(value: str):
+    value = value.strip().replace("#", "")
+    if not re.fullmatch(r"[0-9a-fA-F]{6}", value):
+        return None
+    return int(value, 16)
+
+
+def replace_vars(text, member, guild):
+    return (
+        text.replace("{member}", member.mention)
+        .replace("{name}", member.display_name)
+        .replace("{server}", guild.name)
+        .replace("{count}", str(guild.member_count or 0))
+        .replace("{id}", str(member.id))
+    )
+
+
+def owner_only():
+    async def predicate(ctx):
+        if ctx.author.id != OWNER_ID:
+            raise commands.CheckFailure("Lệnh này chỉ dành cho Owner Bot.")
+        return True
+    return commands.check(predicate)
+
+
+async def safe_send(ctx, text, **kwargs):
+    try:
+        await ctx.send(text, **kwargs)
+    except discord.Forbidden:
+        pass
+
+
+# ============================================================
+# SỰ KIỆN
+# ============================================================
 
 @bot.event
 async def on_ready():
+    load_data()
     try:
-        synced = await bot.tree.sync()
-
-        print("================================")
-        print(f"🌙 Luna: {bot.user}")
-        print(f"🆔 ID: {bot.user.id}")
-        print(f"🏠 Server: {len(bot.guilds)}")
-        print(f"⚡ Slash: {len(synced)}")
-        print("================================")
-
+        await bot.tree.sync()
     except Exception as e:
-        print(f"❌ Lỗi sync: {e}")
+        print("Không thể đồng bộ Slash Commands:", e)
 
+    print("=" * 45)
+    print(f"🌙 Luna đã online: {bot.user}")
+    print(f"🆔 ID: {bot.user.id}")
+    print(f"🏠 Server: {len(bot.guilds)}")
+    print("⚡ Slash: /help, /hello")
+    print("⌨️ Prefix: l!")
+    print("=" * 45)
 
-# =========================================================
-# 👋 MEMBER JOIN
-# =========================================================
 
 @bot.event
-async def on_member_join(member):
+async def on_member_join(member: discord.Member):
+    cfg = guild_data(member.guild.id)["welcome"]
 
-    config = get_welcome(
-        member.guild.id
-    )
-
-    if not config["enabled"]:
+    if not cfg.get("enabled") or not cfg.get("channel"):
         return
 
-    if not config["channel"]:
+    channel = member.guild.get_channel(int(cfg["channel"]))
+    if channel is None:
         return
-
-    channel = member.guild.get_channel(
-        config["channel"]
-    )
-
-    if not channel:
-        return
-
-    text = config["message"]
-
-    text = text.replace(
-        "{user}",
-        member.mention
-    )
-
-    text = text.replace(
-        "{name}",
-        member.display_name
-    )
-
-    text = text.replace(
-        "{server}",
-        member.guild.name
-    )
-
-    text = text.replace(
-        "{members}",
-        str(member.guild.member_count)
-    )
 
     embed = discord.Embed(
-        description=text,
-        color=config["color"]
+        title=replace_vars(cfg.get("title", ""), member, member.guild),
+        description=replace_vars(cfg.get("message", ""), member, member.guild),
+        color=int(cfg.get("color", 0xB8D8FF))
     )
 
-    if config["image"]:
-        embed.set_image(
-            url=config["image"]
-        )
+    if cfg.get("image"):
+        embed.set_image(url=cfg["image"])
 
-    content = None
+    embed.set_footer(text=f"{member.guild.name} • Luna")
 
-    if config["role"]:
-        role = member.guild.get_role(
-            config["role"]
-        )
-
-        if role:
-            content = (
-                f"🎀 {role.mention} "
-                f"ra chào thành viên mới nhé! ♡"
-            )
-
-    await channel.send(
-        content=content,
-        embed=embed
+    role_id = int(cfg.get("role", 0) or 0)
+    role = member.guild.get_role(role_id) if role_id else None
+    content = (
+        f"🎀 {role.mention} — ra chào đón {member.mention} nhé! ♡"
+        if role else member.mention
     )
 
+    try:
+        await channel.send(content=content, embed=embed)
+    except discord.Forbidden:
+        print(f"⚠️ Luna thiếu quyền gửi WLC tại {channel}.")
 
-# =========================================================
-# 🌙 /HELLO
-# =========================================================
 
-@bot.tree.command(
-    name="hello",
-    description="Helo bbi"
-)
-async def hello(interaction):
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
+    if isinstance(error, commands.MissingPermissions):
+        await safe_send(ctx, "❌ Bạn không có quyền dùng lệnh này.")
+        return
+    if isinstance(error, commands.BotMissingPermissions):
+        await safe_send(ctx, "❌ Luna thiếu quyền cần thiết.")
+        return
+    if isinstance(error, commands.MissingRequiredArgument):
+        await safe_send(ctx, f"❌ Thiếu thông tin: `{error.param.name}`.")
+        return
+    if isinstance(error, commands.BadArgument):
+        await safe_send(ctx, "❌ Thông tin nhập vào không hợp lệ.")
+        return
+    if isinstance(error, commands.CheckFailure):
+        await safe_send(ctx, f"❌ {error}")
+        return
+    print("Lỗi lệnh:", repr(error))
+    await safe_send(ctx, "❌ Đã xảy ra lỗi khi thực hiện lệnh.")
 
+
+# ============================================================
+# SLASH: /HELLO + /HELP
+# ============================================================
+
+@bot.tree.command(name="hello", description="Luna chào bạn")
+async def slash_hello(interaction: discord.Interaction):
     await interaction.response.send_message(
-        f"🌙 Xin chào {interaction.user.mention}!\n"
-        "╰┈➤ Luna rất vui được gặp bạn ♡"
+        f"🌙 Xin chào {interaction.user.mention}! Luna đang hoạt động ♡"
     )
 
 
-# =========================================================
-# 📖 /HELP
-# =========================================================
-
-@bot.tree.command(
-    name="help",
-    description="Mở bảng hướng dẫn Luna"
-)
-async def help_command(interaction):
-
+def make_help_embed():
     embed = discord.Embed(
-        title="🌙・𝐋𝐔𝐍𝐀 𝐂𝐎𝐍𝐓𝐑𝐎𝐋",
-        description=(
-            "Bảng hướng dẫn Luna ♡\n\n"
-            "Prefix: `l!`\n"
-            "Slash: `/hello` • `/help`"
-        ),
-        color=0xBDEFFF
+        title="🌙 • LUNA CONTROL PANEL",
+        description="Bot đa năng cho server. Lệnh thường dùng `l!`; Slash giữ `/help` và `/hello`.",
+        color=0xB8D8FF
     )
-
     embed.add_field(
-        name="👤・THÀNH VIÊN",
+        name="👋 WELCOME",
         value=(
-            "`l!ping`\n"
-            "`l!avatar [@user]`\n"
-            "`l!userinfo [@user]`\n"
-            "`l!server`"
-        ),
-        inline=False
+            "`l!setwelcome #kênh @role`\n"
+            "`l!welcome on/off/show/test/reset`\n"
+            "`l!setwelcomemsg ...`\n"
+            "`l!setwelcometitle ...`\n"
+            "`l!setwelcomeimage link`\n"
+            "`l!setwelcomecolor #mãmàu`"
+        ), inline=False
     )
-
     embed.add_field(
-        name="💰・XU LUNE",
-        value=(
-            "`l!balance`\n"
-            "`l!daily` — 24h / 300–600 xu\n"
-            "`l!work` — 1h / 50–100 xu\n"
-            "`l!give @user số_xu`\n"
-            "`l!shop`\n"
-            "`l!buy item`"
-        ),
+        name="💰 XU LUNE",
+        value="`l!balance` • `l!daily` • `l!work` • `l!give` • `l!shop` • `l!buy` • `l!inventory`",
         inline=False
     )
-
     embed.add_field(
-        name="💗・TÌNH YÊU",
-        value=(
-            "`l!love @user`\n"
-            "`l!couple`"
-        ),
+        name="🎁 GIVEAWAY",
+        value="`l!giveaway start 1h 1 Phần thưởng`\n`l!giveaway end ID` • `l!giveaway reroll ID`",
         inline=False
     )
-
     embed.add_field(
-        name="👋・WELCOME",
-        value=(
-            "`l!welcome`\n"
-            "`l!welcome on/off`\n"
-            "`l!welcome channel #kênh`\n"
-            "`l!welcome role @role`\n"
-            "`l!welcome image link`\n"
-            "`l!welcome color mã_màu`\n"
-            "`l!welcome text nội_dung`\n"
-            "`l!welcome show`\n"
-            "`l!welcome reset`"
-        ),
+        name="⚠️ CẢNH BÁO",
+        value="`l!warn @user lý do` • `l!warnings @user` • `l!unwarn @user [số]`\n`l!setmodlog #kênh`",
         inline=False
     )
-
     embed.add_field(
-        name="🛠️・QUẢN LÝ",
-        value=(
-            "`l!clear số_lượng`\n"
-            "`l!say nội_dung`"
-        ),
+        name="🛡️ QUẢN LÝ",
+        value="`l!clear 10` • `l!lock` • `l!unlock` • `l!kick` • `l!ban`",
         inline=False
     )
-
-    embed.add_field(
-        name="👑・OWNER",
-        value="`l!cheatxu @user số_xu`",
-        inline=False
-    )
-
-    embed.set_footer(
-        text="Luna • Xu Lune 🌙"
-    )
-
-    await interaction.response.send_message(
-        embed=embed,
-        ephemeral=True
-    )
+    embed.add_field(name="👑 OWNER", value="`l!cheat @user số_xu`", inline=False)
+    embed.set_footer(text="Luna • Lune Haven")
+    return embed
 
 
-# =========================================================
-# 🏓 PING
-# =========================================================
+@bot.tree.command(name="help", description="Mở bảng điều khiển hướng dẫn Luna")
+async def slash_help(interaction: discord.Interaction):
+    await interaction.response.send_message(embed=make_help_embed())
 
-@bot.command()
+
+@bot.command(name="help")
+async def prefix_help(ctx):
+    await ctx.send(embed=make_help_embed())
+
+
+# ============================================================
+# CƠ BẢN
+# ============================================================
+
+@bot.command(name="ping")
 async def ping(ctx):
-    ms = round(bot.latency * 1000)
-    await ctx.send(
-        f"🌙 Pong! `{ms}ms`"
-    )
+    await ctx.send(f"🏓 Pong! `{round(bot.latency * 1000)}ms`")
 
 
-# =========================================================
-# 🖼️ AVATAR
-# =========================================================
-
-@bot.command()
-async def avatar(
-    ctx,
-    member: discord.Member = None
-):
-
-    member = member or ctx.author
-
-    embed = discord.Embed(
-        title=f"🌙 Avatar • {member.display_name}",
-        color=0xBDEFFF
-    )
-
-    embed.set_image(
-        url=member.display_avatar.url
-    )
-
-    await ctx.send(embed=embed)
-
-
-# =========================================================
-# 👤 USERINFO
-# =========================================================
-
-@bot.command()
-async def userinfo(
-    ctx,
-    member: discord.Member = None
-):
-
-    member = member or ctx.author
-
-    embed = discord.Embed(
-        title=f"👤・{member.display_name}",
-        color=0xBDEFFF
-    )
-
-    embed.set_thumbnail(
-        url=member.display_avatar.url
-    )
-
-    embed.add_field(
-        name="Tên",
-        value=member.name,
-        inline=True
-    )
-
-    embed.add_field(
-        name="ID",
-        value=str(member.id),
-        inline=True
-    )
-
-    embed.add_field(
-        name="Xu Lune",
-        value=f"{balance(member.id):,}",
-        inline=True
-    )
-
-    await ctx.send(embed=embed)
-
-
-# =========================================================
-# 🏠 SERVER
-# =========================================================
-
-@bot.command()
+@bot.command(name="server")
 async def server(ctx):
-
-    guild = ctx.guild
-
-    embed = discord.Embed(
-        title=f"🌙・{guild.name}",
-        color=0xBDEFFF
-    )
-
-    embed.add_field(
-        name="👥 Thành viên",
-        value=str(guild.member_count),
-        inline=True
-    )
-
-    embed.add_field(
-        name="💬 Kênh",
-        value=str(len(guild.channels)),
-        inline=True
-    )
-
+    g = ctx.guild
+    embed = discord.Embed(title=f"🌙 {g.name}", color=0xB8D8FF)
+    embed.add_field(name="👥 Thành viên", value=str(g.member_count))
+    embed.add_field(name="💬 Kênh", value=str(len(g.channels)))
+    embed.add_field(name="👑 Chủ server", value=g.owner.mention if g.owner else "Không rõ")
     await ctx.send(embed=embed)
 
 
-# =========================================================
-# 💰 BALANCE
-# =========================================================
+# ============================================================
+# WELCOME
+# ============================================================
 
-@bot.command()
-async def balance(
-    ctx,
-    member: discord.Member = None
-):
+@bot.group(name="welcome", invoke_without_command=True)
+@commands.has_guild_permissions(manage_guild=True)
+async def welcome(ctx):
+    await welcome_show(ctx)
 
+
+@welcome.command(name="on")
+@commands.has_guild_permissions(manage_guild=True)
+async def welcome_on(ctx):
+    guild_data(ctx.guild.id)["welcome"]["enabled"] = True
+    save_data()
+    await ctx.send("🟢 Đã bật Welcome.")
+
+
+@welcome.command(name="off")
+@commands.has_guild_permissions(manage_guild=True)
+async def welcome_off(ctx):
+    guild_data(ctx.guild.id)["welcome"]["enabled"] = False
+    save_data()
+    await ctx.send("🔴 Đã tắt Welcome.")
+
+
+@welcome.command(name="show")
+@commands.has_guild_permissions(manage_guild=True)
+async def welcome_show(ctx):
+    cfg = guild_data(ctx.guild.id)["welcome"]
+    channel = ctx.guild.get_channel(int(cfg.get("channel", 0) or 0))
+    role = ctx.guild.get_role(int(cfg.get("role", 0) or 0))
+
+    embed = discord.Embed(title="🌙 • WELCOME", color=int(cfg.get("color", 0xB8D8FF)))
+    embed.add_field(name="Trạng thái", value="🟢 Bật" if cfg.get("enabled") else "🔴 Tắt", inline=False)
+    embed.add_field(name="📢 Kênh", value=channel.mention if channel else "Chưa cài", inline=False)
+    embed.add_field(name="🎀 Role", value=role.mention if role else "Chưa cài", inline=False)
+    embed.add_field(name="🖼️ Ảnh", value="Đã cài" if cfg.get("image") else "Chưa cài", inline=False)
+    embed.add_field(name="📝 Tiêu đề", value=cfg.get("title", "Chưa cài")[:1024], inline=False)
+    await ctx.send(embed=embed)
+
+
+@welcome.command(name="test")
+@commands.has_guild_permissions(manage_guild=True)
+async def welcome_test(ctx):
+    cfg = guild_data(ctx.guild.id)["welcome"]
+    if not cfg.get("channel"):
+        await ctx.send("❌ Chưa cài kênh Welcome.")
+        return
+
+    channel = ctx.guild.get_channel(int(cfg["channel"]))
+    if channel is None:
+        await ctx.send("❌ Không tìm thấy kênh Welcome.")
+        return
+
+    member = ctx.author
+    embed = discord.Embed(
+        title=replace_vars(cfg.get("title", ""), member, ctx.guild),
+        description=replace_vars(cfg.get("message", ""), member, ctx.guild),
+        color=int(cfg.get("color", 0xB8D8FF))
+    )
+    if cfg.get("image"):
+        embed.set_image(url=cfg["image"])
+
+    role = ctx.guild.get_role(int(cfg.get("role", 0) or 0))
+    content = f"🎀 {role.mention} — ra chào đón {member.mention} nhé! ♡" if role else member.mention
+
+    try:
+        await channel.send(content=content, embed=embed)
+        await ctx.send("✅ Đã gửi thử Welcome.")
+    except discord.Forbidden:
+        await ctx.send("❌ Luna không có quyền gửi vào kênh Welcome.")
+
+
+@welcome.command(name="reset")
+@commands.has_guild_permissions(manage_guild=True)
+async def welcome_reset(ctx):
+    guild_data(ctx.guild.id)["welcome"] = json.loads(json.dumps(DEFAULT_WELCOME))
+    save_data()
+    await ctx.send("♻️ Đã reset Welcome.")
+
+
+@bot.command(name="setwelcome")
+@commands.has_guild_permissions(manage_guild=True)
+async def setwelcome(ctx, channel: discord.TextChannel, role: discord.Role = None):
+    cfg = guild_data(ctx.guild.id)["welcome"]
+    cfg["channel"] = channel.id
+    if role:
+        cfg["role"] = role.id
+    cfg["enabled"] = True
+    save_data()
+    await ctx.send(
+        f"✅ Đã cài Welcome tại {channel.mention}"
+        + (f" và role {role.mention}." if role else ".")
+    )
+
+
+@bot.command(name="setwelcomemsg", aliases=["welcomemsg"])
+@commands.has_guild_permissions(manage_guild=True)
+async def setwelcomemsg(ctx, *, message: str):
+    guild_data(ctx.guild.id)["welcome"]["message"] = message
+    save_data()
+    await ctx.send("✅ Đã đổi nội dung Welcome.\nBiến: `{member}` `{name}` `{server}` `{count}` `{id}`")
+
+
+@bot.command(name="setwelcometitle")
+@commands.has_guild_permissions(manage_guild=True)
+async def setwelcometitle(ctx, *, title: str):
+    guild_data(ctx.guild.id)["welcome"]["title"] = title
+    save_data()
+    await ctx.send("✅ Đã đổi tiêu đề Welcome.")
+
+
+@bot.command(name="setwelcomeimage")
+@commands.has_guild_permissions(manage_guild=True)
+async def setwelcomeimage(ctx, url: str = None):
+    if not url and ctx.message.attachments:
+        url = ctx.message.attachments[0].url
+    if not url:
+        await ctx.send("❌ Gửi link ảnh hoặc đính kèm ảnh cùng lệnh.")
+        return
+    guild_data(ctx.guild.id)["welcome"]["image"] = url
+    save_data()
+    await ctx.send("🖼️ Đã đổi ảnh Welcome.")
+
+
+@bot.command(name="setwelcomecolor")
+@commands.has_guild_permissions(manage_guild=True)
+async def setwelcomecolor(ctx, color: str):
+    value = parse_hex(color)
+    if value is None:
+        await ctx.send("❌ Màu phải dạng `#B8D8FF`.")
+        return
+    guild_data(ctx.guild.id)["welcome"]["color"] = value
+    save_data()
+    await ctx.send("🎨 Đã đổi màu Welcome.")
+
+
+# ============================================================
+# XU LUNE
+# ============================================================
+
+@bot.command(name="balance", aliases=["bal", "xu"])
+async def balance(ctx, member: discord.Member = None):
     member = member or ctx.author
-
-    await ctx.send(
-        f"🌙 {member.mention} có "
-        f"**{balance(member.id):,} xu Lune**."
-    )
+    acc = account(ctx.guild.id, member.id)
+    await ctx.send(f"🌙 {member.mention} có **{fmt_coins(acc['coins'])} xu Lune**.")
 
 
-# =========================================================
-# 🎁 DAILY
-# 24 GIỜ — 300 ĐẾN 600
-# =========================================================
-
-@bot.command()
+@bot.command(name="daily")
 async def daily(ctx):
-
-    user_id = ctx.author.id
-
-    remaining = cd_left(
-        user_id,
-        "daily",
-        86400
-    )
+    acc = account(ctx.guild.id, ctx.author.id)
+    now = int(datetime.now(timezone.utc).timestamp())
+    remaining = int(acc.get("daily", 0)) + 86400 - now
 
     if remaining > 0:
-
-        hours = int(
-            remaining // 3600
-        )
-
-        minutes = int(
-            (remaining % 3600) // 60
-        )
-
-        await ctx.send(
-            f"⏳ {ctx.author.mention}, "
-            f"bạn đã nhận daily rồi!\n"
-            f"🌙 Nhận lại sau "
-            f"**{hours} giờ {minutes} phút**."
-        )
-
+        await ctx.send(f"⏳ Daily còn **{remaining // 3600} giờ {(remaining % 3600) // 60} phút**.")
         return
 
-    amount = random.randint(
-        300,
-        600
-    )
-
-    add_xu(
-        user_id,
-        amount
-    )
-
-    set_cd(
-        user_id,
-        "daily"
-    )
-
-    await ctx.send(
-        f"🎁 {ctx.author.mention} nhận được "
-        f"**{amount:,} xu Lune**!\n"
-        f"⏰ Daily tiếp theo sau **24 giờ**."
-    )
+    amount = random.randint(300, 600)
+    acc["coins"] += amount
+    acc["daily"] = now
+    save_data()
+    await ctx.send(f"🌙 Daily: **+{fmt_coins(amount)} xu Lune**!")
 
 
-# =========================================================
-# 💼 WORK
-# 1 GIỜ — 50 ĐẾN 100
-# =========================================================
-
-@bot.command()
+@bot.command(name="work")
 async def work(ctx):
-
-    user_id = ctx.author.id
-
-    remaining = cd_left(
-        user_id,
-        "work",
-        3600
-    )
+    acc = account(ctx.guild.id, ctx.author.id)
+    now = int(datetime.now(timezone.utc).timestamp())
+    remaining = int(acc.get("work", 0)) + 3600 - now
 
     if remaining > 0:
-
-        minutes = int(
-            remaining // 60
-        )
-
-        seconds = int(
-            remaining % 60
-        )
-
-        await ctx.send(
-            f"⏳ {ctx.author.mention}, "
-            f"bạn vừa làm việc xong!\n"
-            f"💼 Làm lại sau "
-            f"**{minutes} phút {seconds} giây**."
-        )
-
+        await ctx.send(f"⏳ Work còn **{remaining // 60} phút**.")
         return
 
-    amount = random.randint(
-        50,
-        100
-    )
+    amount = random.randint(50, 100)
+    acc["coins"] += amount
+    acc["work"] = now
+    save_data()
+    await ctx.send(f"💼 Work: **+{fmt_coins(amount)} xu Lune**!")
 
-    jobs = [
-        "phục vụ quán cà phê",
-        "thiết kế ảnh",
-        "chăm sóc thú cưng",
-        "viết nội dung",
-        "làm việc tại cửa hàng"
+
+@bot.command(name="give")
+async def give(ctx, member: discord.Member, amount: int):
+    if member.bot or member.id == ctx.author.id or amount <= 0:
+        await ctx.send("❌ Thông tin chuyển xu không hợp lệ.")
+        return
+
+    sender = account(ctx.guild.id, ctx.author.id)
+    receiver = account(ctx.guild.id, member.id)
+    if sender["coins"] < amount:
+        await ctx.send("❌ Bạn không đủ xu.")
+        return
+
+    sender["coins"] -= amount
+    receiver["coins"] += amount
+    save_data()
+    await ctx.send(f"💸 Đã chuyển **{fmt_coins(amount)} xu** cho {member.mention}.")
+
+
+@bot.command(name="shop")
+async def shop(ctx):
+    shop_data = guild_data(ctx.guild.id)["shop"]
+    embed = discord.Embed(title="🌙 • SHOP LUNE", description="Mua bằng xu Lune.", color=0xB8D8FF)
+    for key, item in shop_data.items():
+        embed.add_field(name=f"{item['name']} — `{key}`", value=f"💰 {fmt_coins(item['price'])} xu", inline=False)
+    embed.set_footer(text="Dùng: l!buy tên_vật_phẩm [số_lượng]")
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="buy")
+async def buy(ctx, item_name: str, amount: int = 1):
+    shop_data = guild_data(ctx.guild.id)["shop"]
+    key = item_name.lower()
+    if key not in shop_data:
+        await ctx.send("❌ Không có vật phẩm này. Dùng `l!shop`.")
+        return
+    if amount <= 0 or amount > 100:
+        await ctx.send("❌ Số lượng không hợp lệ.")
+        return
+
+    item = shop_data[key]
+    total = item["price"] * amount
+    acc = account(ctx.guild.id, ctx.author.id)
+    if acc["coins"] < total:
+        await ctx.send(f"❌ Cần **{fmt_coins(total)} xu**, bạn chỉ có **{fmt_coins(acc['coins'])} xu**.")
+        return
+
+    acc["coins"] -= total
+    acc["items"][key] = acc["items"].get(key, 0) + amount
+    save_data()
+    await ctx.send(f"🛍️ Đã mua **{item['name']} x{amount}**.")
+
+
+@bot.command(name="inventory", aliases=["inv"])
+async def inventory(ctx, member: discord.Member = None):
+    member = member or ctx.author
+    acc = account(ctx.guild.id, member.id)
+    if not acc["items"]:
+        await ctx.send(f"🎒 {member.mention} chưa có vật phẩm.")
+        return
+
+    shop_data = guild_data(ctx.guild.id)["shop"]
+    lines = [
+        f"{shop_data.get(k, {}).get('name', k)}: **{v}**"
+        for k, v in acc["items"].items()
     ]
+    await ctx.send(f"🎒 **Kho của {member.display_name}**\n" + "\n".join(lines))
 
-    job = random.choice(jobs)
 
-    add_xu(
-        user_id,
-        amount
+# ============================================================
+# OWNER CHEAT
+# ============================================================
+
+@bot.command(name="cheat")
+@owner_only()
+async def cheat(ctx, member: discord.Member, amount: int):
+    if amount == 0:
+        await ctx.send("❌ Số xu phải khác 0.")
+        return
+    acc = account(ctx.guild.id, member.id)
+    acc["coins"] += amount
+    save_data()
+    action = "thêm" if amount > 0 else "trừ"
+    await ctx.send(f"👑 Đã **{action} {fmt_coins(abs(amount))} xu** cho {member.mention}.")
+
+
+# ============================================================
+# GIVEAWAY
+# ============================================================
+
+def giveaway_embed(info, ended=False):
+    title = "🎉 GIVEAWAY ĐÃ KẾT THÚC" if ended else "🎉 GIVEAWAY"
+    embed = discord.Embed(
+        title=title,
+        description=(
+            f"🎁 **Phần thưởng:** {info['prize']}\n"
+            f"👥 **Số người thắng:** {info['winners']}\n"
+            f"⏰ **Kết thúc:** <t:{info['end']}:R>\n\n"
+            "React **🎉** để tham gia!"
+        ),
+        color=0x888888 if ended else 0xB8D8FF
     )
+    return embed
 
-    set_cd(
-        user_id,
-        "work"
-    )
 
+@bot.group(name="giveaway", aliases=["ga"], invoke_without_command=True)
+async def giveaway(ctx):
     await ctx.send(
-        f"💼 {ctx.author.mention} đã {job} "
-        f"và nhận **{amount:,} xu Lune**!\n"
-        f"⏰ Có thể `l!work` lại sau **1 giờ**."
+        "🎉 `l!giveaway start 1h 1 Phần thưởng`\n"
+        "`l!giveaway end ID`\n"
+        "`l!giveaway reroll ID`"
     )
 
 
-# =========================================================
-# 💸 GIVE
-# =========================================================
-
-@bot.command()
-async def give(
-    ctx,
-    member: discord.Member,
-    amount: int
-):
-
-    if member.bot:
-        await ctx.send(
-            "❌ Không thể gửi xu cho bot."
-        )
+@giveaway.command(name="start")
+@commands.has_guild_permissions(manage_guild=True)
+async def giveaway_start(ctx, duration: str, winners: int, *, prize: str):
+    seconds = parse_duration(duration)
+    if seconds is None or seconds < 10:
+        await ctx.send("❌ Thời gian ví dụ: `10m`, `1h`, `1d`.")
+        return
+    if not 1 <= winners <= 50:
+        await ctx.send("❌ Số người thắng từ 1 đến 50.")
         return
 
-    if member.id == ctx.author.id:
-        await ctx.send(
-            "❌ Không thể tự gửi xu cho mình."
-        )
-        return
-
-    if amount <= 0:
-        await ctx.send(
-            "❌ Số xu phải lớn hơn 0."
-        )
-        return
-
-    if not remove_xu(
-        ctx.author.id,
-        amount
-    ):
-        await ctx.send(
-            "❌ Bạn không đủ xu Lune."
-        )
-        return
-
-    add_xu(
-        member.id,
-        amount
-    )
-
-    await ctx.send(
-        f"💸 {ctx.author.mention} đã gửi "
-        f"**{amount:,} xu Lune** cho "
-        f"{member.mention}."
-    )
-
-
-# =========================================================
-# 🛒 SHOP
-# =========================================================
-
-SHOP = {
-    "gift": {
-        "name": "🎁 Gift",
-        "price": 500
-    },
-    "role": {
-        "name": "💜 Custom Role",
-        "price": 1000
-    },
-    "vip": {
-        "name": "💎 VIP",
-        "price": 5000
+    end = int(datetime.now(timezone.utc).timestamp()) + seconds
+    info = {
+        "channel_id": ctx.channel.id,
+        "message_id": 0,
+        "prize": prize,
+        "winners": winners,
+        "end": end,
+        "ended": False
     }
+
+    msg = await ctx.send(embed=giveaway_embed(info))
+    await msg.add_reaction("🎉")
+    info["message_id"] = msg.id
+    guild_data(ctx.guild.id)["giveaways"][str(msg.id)] = info
+    save_data()
+
+    await ctx.send(f"✅ Đã tạo Giveaway `#{msg.id}`.")
+    await asyncio.sleep(seconds)
+    await finish_giveaway(ctx.guild.id, msg.id)
+
+
+async def finish_giveaway(guild_id, message_id):
+    g = guild_data(guild_id)
+    raw = g["giveaways"].get(str(message_id))
+    if not raw or raw.get("ended"):
+        return
+
+    channel = bot.get_channel(int(raw["channel_id"]))
+    if channel is None:
+        raw["ended"] = True
+        save_data()
+        return
+
+    try:
+        msg = await channel.fetch_message(message_id)
+    except (discord.NotFound, discord.Forbidden):
+        raw["ended"] = True
+        save_data()
+        return
+
+    reaction = discord.utils.get(msg.reactions, emoji="🎉")
+    users = []
+    if reaction:
+        try:
+            async for user in reaction.users():
+                if not user.bot:
+                    users.append(user)
+        except discord.HTTPException:
+            pass
+
+    random.shuffle(users)
+    winners = users[:int(raw["winners"])]
+    raw["ended"] = True
+    save_data()
+
+    ended_embed = giveaway_embed(raw, ended=True)
+
+    if winners:
+        mentions = ", ".join(u.mention for u in winners)
+        ended_embed.add_field(name="🏆 Người thắng", value=mentions, inline=False)
+        await channel.send(f"🎉 Chúc mừng {mentions}! Bạn đã thắng **{raw['prize']}**!")
+    else:
+        ended_embed.add_field(name="🏆 Người thắng", value="Không có người tham gia hợp lệ.", inline=False)
+        await channel.send("🎉 Giveaway kết thúc nhưng chưa có người thắng.")
+
+    try:
+        await msg.edit(embed=ended_embed)
+    except discord.HTTPException:
+        pass
+
+
+@giveaway.command(name="end")
+@commands.has_guild_permissions(manage_guild=True)
+async def giveaway_end(ctx, message_id: int):
+    if str(message_id) not in guild_data(ctx.guild.id)["giveaways"]:
+        await ctx.send("❌ Không tìm thấy Giveaway.")
+        return
+    await finish_giveaway(ctx.guild.id, message_id)
+    await ctx.send("✅ Đã kết thúc Giveaway.")
+
+
+@giveaway.command(name="reroll")
+@commands.has_guild_permissions(manage_guild=True)
+async def giveaway_reroll(ctx, message_id: int):
+    raw = guild_data(ctx.guild.id)["giveaways"].get(str(message_id))
+    if not raw:
+        await ctx.send("❌ Không tìm thấy Giveaway.")
+        return
+
+    channel = bot.get_channel(int(raw["channel_id"]))
+    if channel is None:
+        await ctx.send("❌ Không tìm thấy kênh Giveaway.")
+        return
+
+    try:
+        msg = await channel.fetch_message(message_id)
+    except discord.HTTPException:
+        await ctx.send("❌ Không lấy được Giveaway.")
+        return
+
+    reaction = discord.utils.get(msg.reactions, emoji="🎉")
+    users = []
+    if reaction:
+        async for user in reaction.users():
+            if not user.bot:
+                users.append(user)
+
+    if not users:
+        await ctx.send("❌ Không có người tham gia.")
+        return
+
+    winner = random.choice(users)
+    await ctx.send(f"🔄 Reroll! Người thắng mới: {winner.mention} — **{raw['prize']}**.")
+
+
+# ============================================================
+# CẢNH BÁO
+# ============================================================
+
+WARN_STEPS = {
+    3: ("timeout", 5 * 60),
+    4: ("timeout", 15 * 60),
+    5: ("timeout", 60 * 60),
+    6: ("timeout", 24 * 60 * 60),
+    7: ("kick", 0),
+    8: ("ban", 0),
 }
 
 
-@bot.command()
-async def shop(ctx):
+async def send_modlog(guild, text):
+    channel_id = int(guild_data(guild.id).get("modlog", 0) or 0)
+    if not channel_id:
+        return
+    channel = guild.get_channel(channel_id)
+    if channel:
+        try:
+            await channel.send(text)
+        except discord.HTTPException:
+            pass
 
-    embed = discord.Embed(
-        title="🌙・𝐋𝐔𝐍𝐀 𝐒𝐇𝐎𝐏",
-        description=(
-            "Dùng `l!buy mã_item` để mua."
-        ),
-        color=0xBDEFFF
+
+@bot.command(name="setmodlog")
+@commands.has_guild_permissions(manage_guild=True)
+async def setmodlog(ctx, channel: discord.TextChannel):
+    guild_data(ctx.guild.id)["modlog"] = channel.id
+    save_data()
+    await ctx.send(f"📋 Đã đặt kênh log: {channel.mention}")
+
+
+@bot.command(name="warn")
+@commands.has_guild_permissions(moderate_members=True)
+async def warn(ctx, member: discord.Member, *, reason: str = "Không ghi lý do"):
+    if member.bot or member.id == ctx.author.id:
+        await ctx.send("❌ Không thể cảnh báo đối tượng này.")
+        return
+
+    g = guild_data(ctx.guild.id)
+    uid = str(member.id)
+    g["warnings"].setdefault(uid, [])
+    g["warnings"][uid].append({
+        "reason": reason,
+        "by": ctx.author.id,
+        "time": int(datetime.now(timezone.utc).timestamp())
+    })
+    count = len(g["warnings"][uid])
+    save_data()
+
+    embed = discord.Embed(title="⚠️ CẢNH BÁO THÀNH VIÊN", color=0xF2C94C)
+    embed.description = (
+        f"👤 Thành viên: {member.mention}\n"
+        f"🔢 Số cảnh báo: **{count}**\n"
+        f"📝 Lý do: {reason}\n"
+        f"👮 Người cảnh báo: {ctx.author.mention}"
     )
-
-    for item_id, item in SHOP.items():
-
-        embed.add_field(
-            name=item["name"],
-            value=(
-                f"Mã: `{item_id}`\n"
-                f"💰 **{item['price']:,} xu Lune**"
-            ),
-            inline=False
-        )
-
     await ctx.send(embed=embed)
+    await send_modlog(ctx.guild, f"⚠️ {member} nhận cảnh báo #{count}: {reason}")
 
-
-# =========================================================
-# 🛍️ BUY
-# =========================================================
-
-@bot.command()
-async def buy(
-    ctx,
-    item: str
-):
-
-    item = item.lower()
-
-    if item not in SHOP:
-        await ctx.send(
-            "❌ Item không tồn tại.\n"
-            "Dùng `l!shop` để xem."
-        )
+    action = WARN_STEPS.get(count)
+    if not action:
         return
 
-    price = SHOP[item]["price"]
-
-    if not remove_xu(
-        ctx.author.id,
-        price
-    ):
-        await ctx.send(
-            f"❌ Bạn không đủ xu Lune.\n"
-            f"Giá: **{price:,} xu**"
-        )
-        return
-
-    await ctx.send(
-        f"🛒 {ctx.author.mention} đã mua "
-        f"**{SHOP[item]['name']}**!"
-    )
-
-
-# =========================================================
-# 💗 LOVE
-# =========================================================
-
-@bot.command()
-async def love(
-    ctx,
-    member: discord.Member
-):
-
-    if member.id == ctx.author.id:
-        await ctx.send(
-            "💗 Tự yêu bản thân: **100%** ✨"
-        )
-        return
-
-    percent = random.randint(
-        1,
-        100
-    )
-
-    await ctx.send(
-        f"💗 **Luna Love**\n\n"
-        f"☾ {ctx.author.mention} × {member.mention}\n"
-        f"💞 Độ hợp: **{percent}%**"
-    )
-
-
-# =========================================================
-# 💕 COUPLE
-# =========================================================
-
-@bot.command()
-async def couple(ctx):
-
-    members = [
-        m for m in ctx.guild.members
-        if not m.bot
-    ]
-
-    if len(members) < 2:
-        await ctx.send(
-            "❌ Không đủ thành viên."
-        )
-        return
-
-    first, second = random.sample(
-        members,
-        2
-    )
-
-    percent = random.randint(
-        50,
-        100
-    )
-
-    await ctx.send(
-        f"💗 **Luna ghép đôi**\n\n"
-        f"☾ {first.mention} × {second.mention}\n"
-        f"💞 Độ hợp: **{percent}%**"
-    )
-
-
-# =========================================================
-# 👑 CHEAT XU
-# CHỈ OWNER BOT
-# =========================================================
-
-@bot.command()
-async def cheatxu(
-    ctx,
-    member: discord.Member,
-    amount: int
-):
-
-    if ctx.author.id != OWNER_ID:
-        await ctx.send(
-            "❌ Chỉ Owner Bot mới dùng được."
-        )
-        return
-
-    if amount <= 0:
-        await ctx.send(
-            "❌ Số xu phải lớn hơn 0."
-        )
-        return
-
-    add_xu(
-        member.id,
-        amount
-    )
-
-    await ctx.send(
-        f"👑 Đã cộng **{amount:,} xu Lune** "
-        f"cho {member.mention}."
-    )
-
-
-# =========================================================
-# 🧹 CLEAR
-# =========================================================
-
-@bot.command()
-@commands.has_permissions(
-    manage_messages=True
-)
-async def clear(
-    ctx,
-    amount: int
-):
-
-    if amount <= 0:
-        await ctx.send(
-            "❌ Số lượng không hợp lệ."
-        )
-        return
-
-    deleted = await ctx.channel.purge(
-        limit=amount + 1
-    )
-
-    msg = await ctx.send(
-        f"🧹 Đã xóa "
-        f"**{len(deleted) - 1}** tin nhắn."
-    )
-
-    await msg.delete(
-        delay=3
-    )
-
-
-# =========================================================
-# 🗣️ SAY
-# =========================================================
-
-@bot.command()
-@commands.has_permissions(
-    manage_messages=True
-)
-async def say(
-    ctx,
-    *,
-    message
-):
-
-    await ctx.message.delete()
-    await ctx.send(message)
-
-
-# =========================================================
-# 👋 WELCOME
-# =========================================================
-
-@bot.group(
-    name="welcome",
-    invoke_without_command=True
-)
-@commands.has_permissions(
-    manage_guild=True
-)
-async def welcome(ctx):
-
-    config = get_welcome(
-        ctx.guild.id
-    )
-
-    status = (
-        "🟢 Bật"
-        if config["enabled"]
-        else "🔴 Tắt"
-    )
-
-    channel = (
-        f"<#{config['channel']}>"
-        if config["channel"]
-        else "Chưa cài"
-    )
-
-    role = (
-        f"<@&{config['role']}>"
-        if config["role"]
-        else "Chưa cài"
-    )
-
-    embed = discord.Embed(
-        title="🌙・𝐖𝐄𝐋𝐂𝐎𝐌𝐄",
-        description=(
-            f"**Trạng thái:** {status}\n"
-            f"📢 **Kênh:** {channel}\n"
-            f"🎀 **Role:** {role}\n"
-            f"🖼️ **Ảnh:** "
-            f"{'Đã cài' if config['image'] else 'Chưa cài'}\n\n"
-            "**Cài đặt:**\n"
-            "`l!welcome on`\n"
-            "`l!welcome off`\n"
-            "`l!welcome channel #kênh`\n"
-            "`l!welcome role @role`\n"
-            "`l!welcome image link`\n"
-            "`l!welcome color mã_màu`\n"
-            "`l!welcome text nội_dung`\n"
-            "`l!welcome show`\n"
-            "`l!welcome reset`"
-        ),
-        color=config["color"]
-    )
-
-    await ctx.send(embed=embed)
-
-
-# =========================================================
-# 🟢 WELCOME ON
-# =========================================================
-
-@welcome.command(name="on")
-@commands.has_permissions(manage_guild=True)
-async def welcome_on(ctx):
-
-    config = get_welcome(ctx.guild.id)
-    config["enabled"] = True
-    save_data()
-
-    await ctx.send(
-        "🟢 Đã bật chào member."
-    )
-
-
-# =========================================================
-# 🔴 WELCOME OFF
-# =========================================================
-
-@welcome.command(name="off")
-@commands.has_permissions(manage_guild=True)
-async def welcome_off(ctx):
-
-    config = get_welcome(ctx.guild.id)
-    config["enabled"] = False
-    save_data()
-
-    await ctx.send(
-        "🔴 Đã tắt chào member."
-    )
-
-
-# =========================================================
-# 📢 KÊNH WELCOME
-# =========================================================
-
-@welcome.command(name="channel")
-@commands.has_permissions(manage_guild=True)
-async def welcome_channel(
-    ctx,
-    channel: discord.TextChannel
-):
-
-    config = get_welcome(ctx.guild.id)
-    config["channel"] = channel.id
-    save_data()
-
-    await ctx.send(
-        f"📢 Kênh welcome: {channel.mention}"
-    )
-
-
-# =========================================================
-# 🎀 ROLE WELCOME
-# =========================================================
-
-@welcome.command(name="role")
-@commands.has_permissions(manage_guild=True)
-async def welcome_role(
-    ctx,
-    role: discord.Role
-):
-
-    config = get_welcome(ctx.guild.id)
-    config["role"] = role.id
-    save_data()
-
-    await ctx.send(
-        f"🎀 Role welcome: {role.mention}"
-    )
-
-
-# =========================================================
-# 🖼️ ẢNH WELCOME
-# =========================================================
-
-@welcome.command(name="image")
-@commands.has_permissions(manage_guild=True)
-async def welcome_image(
-    ctx,
-    *,
-    url
-):
-
-    config = get_welcome(ctx.guild.id)
-    config["image"] = url.strip()
-    save_data()
-
-    await ctx.send(
-        "🖼️ Đã cập nhật ảnh Welcome."
-    )
-
-
-# =========================================================
-# 🎨 MÀU WELCOME
-# =========================================================
-
-@welcome.command(name="color")
-@commands.has_permissions(manage_guild=True)
-async def welcome_color(
-    ctx,
-    color: str
-):
-
-    color = color.replace(
-        "#",
-        ""
-    )
-
+    kind, duration = action
     try:
-        value = int(color, 16)
+        if kind == "timeout":
+            until = discord.utils.utcnow() + timedelta(seconds=duration)
+            await member.timeout(until, reason=f"Đủ {count} cảnh báo: {reason}")
+            await ctx.send(f"⏱️ {member.mention} đạt {count} cảnh báo → timeout {duration // 60} phút.")
+        elif kind == "kick":
+            await member.kick(reason=f"Đủ {count} cảnh báo.")
+            await ctx.send(f"👢 {member.mention} đã bị kick do đủ {count} cảnh báo.")
+        elif kind == "ban":
+            await member.ban(reason=f"Đủ {count} cảnh báo.")
+            await ctx.send(f"🔨 {member.mention} đã bị ban do đủ {count} cảnh báo.")
+    except discord.Forbidden:
+        await ctx.send("❌ Luna không đủ quyền để xử lý tự động.")
 
-    except ValueError:
-        await ctx.send(
-            "❌ Mã màu không hợp lệ.\n"
-            "Ví dụ: `l!welcome color BDEFFF`"
-        )
+
+@bot.command(name="warnings", aliases=["warns"])
+async def warnings(ctx, member: discord.Member = None):
+    member = member or ctx.author
+    records = guild_data(ctx.guild.id)["warnings"].get(str(member.id), [])
+    if not records:
+        await ctx.send(f"🛡️ {member.mention} không có cảnh báo.")
         return
 
-    config = get_welcome(ctx.guild.id)
-    config["color"] = value
-    save_data()
-
-    await ctx.send(
-        f"🎨 Đã đổi màu thành "
-        f"`#{color.upper()}`."
-    )
-
-
-# =========================================================
-# 📝 NỘI DUNG WELCOME
-# =========================================================
-
-@welcome.command(name="text")
-@commands.has_permissions(manage_guild=True)
-async def welcome_text(
-    ctx,
-    *,
-    message
-):
-
-    config = get_welcome(ctx.guild.id)
-    config["message"] = message
-    save_data()
-
-    await ctx.send(
-        "📝 Đã cập nhật lời chào."
-    )
-
-
-# =========================================================
-# 👀 XEM WELCOME
-# =========================================================
-
-@welcome.command(name="show")
-@commands.has_permissions(manage_guild=True)
-async def welcome_show(ctx):
-
-    config = get_welcome(ctx.guild.id)
-
+    lines = [f"**#{i}** — {item.get('reason', 'Không rõ')}" for i, item in enumerate(records[-20:], 1)]
     embed = discord.Embed(
-        title="🌙・𝐖𝐄𝐋𝐂𝐎𝐌𝐄",
-        description=config["message"],
-        color=config["color"]
+        title=f"⚠️ Cảnh báo của {member.display_name}",
+        description="\n".join(lines),
+        color=0xF2C94C
     )
-
-    embed.add_field(
-        name="Trạng thái",
-        value=(
-            "🟢 Bật"
-            if config["enabled"]
-            else "🔴 Tắt"
-        ),
-        inline=False
-    )
-
-    embed.add_field(
-        name="📢 Kênh",
-        value=(
-            f"<#{config['channel']}>"
-            if config["channel"]
-            else "Chưa cài"
-        ),
-        inline=False
-    )
-
-    embed.add_field(
-        name="🎀 Role",
-        value=(
-            f"<@&{config['role']}>"
-            if config["role"]
-            else "Chưa cài"
-        ),
-        inline=False
-    )
-
-    if config["image"]:
-        embed.set_image(
-            url=config["image"]
-        )
-
     await ctx.send(embed=embed)
 
 
-# =========================================================
-# ♻️ RESET WELCOME
-# =========================================================
+@bot.command(name="unwarn")
+@commands.has_guild_permissions(moderate_members=True)
+async def unwarn(ctx, member: discord.Member, index: int = None):
+    records = guild_data(ctx.guild.id)["warnings"].get(str(member.id), [])
+    if not records:
+        await ctx.send("❌ Không có cảnh báo.")
+        return
 
-@welcome.command(name="reset")
-@commands.has_permissions(manage_guild=True)
-async def welcome_reset(ctx):
-
-    data["welcome"][
-        str(ctx.guild.id)
-    ] = default_welcome()
+    if index is None:
+        records.pop()
+    elif 1 <= index <= len(records):
+        records.pop(index - 1)
+    else:
+        await ctx.send("❌ Số cảnh báo không hợp lệ.")
+        return
 
     save_data()
-
-    await ctx.send(
-        "♻️ Đã reset Welcome của server."
-    )
+    await ctx.send(f"✅ Đã gỡ cảnh báo của {member.mention}.")
 
 
-# =========================================================
-# ❌ XỬ LÝ LỖI
-# =========================================================
+# ============================================================
+# QUẢN LÝ
+# ============================================================
 
-@bot.event
-async def on_command_error(
-    ctx,
-    error
-):
-
-    if isinstance(
-        error,
-        commands.CommandNotFound
-    ):
+@bot.command(name="clear", aliases=["purge"])
+@commands.has_permissions(manage_messages=True)
+async def clear(ctx, amount: int):
+    if not 1 <= amount <= 100:
+        await ctx.send("❌ Số lượng từ 1 đến 100.")
         return
+    deleted = await ctx.channel.purge(limit=amount + 1)
+    msg = await ctx.send(f"🧹 Đã xóa **{len(deleted) - 1}** tin nhắn.")
+    await asyncio.sleep(3)
+    try:
+        await msg.delete()
+    except discord.HTTPException:
+        pass
 
-    if isinstance(
-        error,
-        commands.MissingPermissions
-    ):
-        await ctx.send(
-            "❌ Bạn không có quyền dùng lệnh này."
-        )
+
+@bot.command(name="lock")
+@commands.has_permissions(manage_channels=True)
+async def lock(ctx):
+    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+    overwrite.send_messages = False
+    await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+    await ctx.send("🔒 Đã khóa kênh.")
+
+
+@bot.command(name="unlock")
+@commands.has_permissions(manage_channels=True)
+async def unlock(ctx):
+    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+    overwrite.send_messages = None
+    await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+    await ctx.send("🔓 Đã mở khóa kênh.")
+
+
+@bot.command(name="kick")
+@commands.has_permissions(kick_members=True)
+async def kick(ctx, member: discord.Member, *, reason: str = "Không ghi lý do"):
+    if member == ctx.guild.owner:
+        await ctx.send("❌ Không thể kick chủ server.")
         return
+    await member.kick(reason=reason)
+    await ctx.send(f"👢 Đã kick {member.mention}.\n📝 {reason}")
 
-    if isinstance(
-        error,
-        commands.MissingRequiredArgument
-    ):
-        await ctx.send(
-            "❌ Bạn nhập thiếu thông tin."
-        )
+
+@bot.command(name="ban")
+@commands.has_permissions(ban_members=True)
+async def ban(ctx, member: discord.Member, *, reason: str = "Không ghi lý do"):
+    if member == ctx.guild.owner:
+        await ctx.send("❌ Không thể ban chủ server.")
         return
-
-    if isinstance(
-        error,
-        commands.BadArgument
-    ):
-        await ctx.send(
-            "❌ Thông tin nhập vào không hợp lệ."
-        )
-        return
-
-    print(
-        f"❌ Lỗi: {error}"
-    )
+    await member.ban(reason=reason)
+    await ctx.send(f"🔨 Đã ban {member.mention}.\n📝 {reason}")
 
 
-# =========================================================
-# 🚀 START
-# =========================================================
+# ============================================================
+# CHẠY BOT
+# ============================================================
 
-if not TOKEN:
-    print("❌ Chưa tìm thấy TOKEN.")
-else:
+if __name__ == "__main__":
+    load_data()
+
+    if not TOKEN:
+        raise RuntimeError("Chưa có TOKEN. Hãy thêm biến TOKEN trên Railway.")
+
+    if OWNER_ID == 0:
+        print("⚠️ OWNER_ID chưa được cài. l!cheat sẽ không dùng được.")
+
     bot.run(TOKEN)
+        

@@ -312,7 +312,7 @@ async def help_cmd(ctx):
 
 @bot.tree.command(name="hello", description="Luna chào bạn")
 async def slash_hello(interaction: discord.Interaction):
-    await interaction.response.send_message(f"🌙 Xin chào {interaction.user.mention}! Luna đã sẵn sàng.Chúc bạn có những phút giây thật vui và đáng nhớ tại đây.")
+    await interaction.response.send_message(f"🌙 Xin chào {interaction.user.mention}! Luna đã sẵn sàng. Chúc bạn có những phút giây thật vui và đáng nhớ tại đây.")
     
 
 @bot.tree.command(name="help", description="Mở bảng điều khiển lệnh Luna")

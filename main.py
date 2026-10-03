@@ -342,16 +342,24 @@ async def botinfo(ctx):
 # ---------------- ECONOMY ----------------
 
 @bot.command()
-async def balance(ctx, member: discord.Member | None = None):
-    member = member or ctx.author
-    await ctx.reply(embed=embed("💰 Số dư Lune", f"{member.mention} đang có **{money(balance(member.id))}**."))
-
-@bot.command(aliases=["bal"])
-async def xu(ctx, member: discord.Member | None = None):
+async def balance(ctx, member: discord.Member = None):
     member = member or ctx.author
     amount = get_balance(member.id)
-    await ctx.reply(embed=embed("💰 Số dư Lune",f"{member.mention} đang có **{amount:,} xu**."
 
+    e = embed("💰 Số dư Lune",f"{member.mention} đang có **{amount:,} xu**.")
+
+    await ctx.reply(embed=e)
+
+
+@bot.command(aliases=["bal"])
+async def xu(ctx, member: discord.Member = None):
+    member = member or ctx.author
+    amount = get_balance(member.id)
+
+    e = embed("💰 Số dư Lune",f"{member.mention} đang có **{amount:,} xu**.")
+
+    await ctx.reply(embed=e)
+    
 @bot.command()
 @commands.cooldown(1, 86400, commands.BucketType.user)
 async def daily(ctx):

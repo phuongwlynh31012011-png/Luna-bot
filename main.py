@@ -292,7 +292,7 @@ async def on_command_error(ctx, error):
 
 @bot.command(name="hello")
 async def hello(ctx):
-    await ctx.reply(f"🌙 Xin chào {ctx.author.mention}! Luna v2 đã sẵn sàng.")
+    await ctx.reply(f"🌙 Xin chào {ctx.author.mention}! Luna đã sẵn sàng.")
 
 @bot.command(name="help", aliases=["h"])
 async def help_cmd(ctx):
@@ -312,7 +312,10 @@ async def help_cmd(ctx):
 
 @bot.tree.command(name="hello", description="Luna chào bạn")
 async def slash_hello(interaction: discord.Interaction):
-    await interaction.response.send_message(f"🌙 Xin chào {interaction.user.mention}! Luna v2 đã sẵn sàng.")
+    await ctx.send(
+    f"🌙 **Luna đã có mặt!**\n"
+    f"Xin chào {ctx.author.mention} ♡ Chúc bạn có những phút giây thật vui và đáng nhớ tại đây."
+    )
 
 @bot.tree.command(name="help", description="Mở bảng điều khiển lệnh Luna")
 async def slash_help(interaction: discord.Interaction):
@@ -794,7 +797,7 @@ async def sync(ctx):
 @bot.command()
 @owner_only()
 async def shutdown(ctx):
-    await ctx.reply("🌙 Luna v2 đang tắt...")
+    await ctx.reply("🌙 Luna đang tắt...")
     await bot.close()
 
 # ---------------- RUN ----------------

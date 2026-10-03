@@ -10,7 +10,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 
 # ============================================================
-# LUNA v2 — Discord Bot
+# LUNA — Discord Bot
 # Prefix: l! or L!
 # Database: SQLite
 # ============================================================
@@ -19,7 +19,7 @@ TOKEN = os.getenv("TOKEN", "").strip()
 OWNER_ID = int(os.getenv("OWNER_ID", "0") or 0)
 
 PREFIXES = ("l!", "L!")
-DB_FILE = "luna_v2.db"
+DB_FILE = "luna.db"
 
 if not TOKEN:
     raise RuntimeError("Chưa có TOKEN. Hãy đặt biến môi trường TOKEN.")
@@ -270,7 +270,7 @@ async def on_ready():
         await bot.tree.sync()
     except Exception as e:
         print("Slash sync error:", e)
-    print(f"🌙 Luna v2 online: {bot.user} | {bot.user.id}")
+    print(f"🌙 Luna online: {bot.user} | {bot.user.id}")
 
 @bot.event
 async def on_command_error(ctx, error):

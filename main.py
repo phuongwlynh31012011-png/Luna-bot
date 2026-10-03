@@ -108,7 +108,7 @@ def ensure_user(user_id: int):
     db.execute("INSERT OR IGNORE INTO users(user_id) VALUES(?)", (user_id,))
     db.commit()
 
-def balance(user_id: int) -> int:
+def get_balance(user_id: int) -> int:
     ensure_user(user_id)
     row = db.execute("SELECT balance FROM users WHERE user_id=?", (user_id,)).fetchone()
     return int(row["balance"])
@@ -169,7 +169,6 @@ CATEGORIES = {
         "`l!give @user <số>` — chuyển xu",
         "`l!daily` — nhận xu hằng ngày",
         "`l!work` — làm việc kiếm xu",
-        "`l!shop` — xem shop của server",
         "`l!shop` — xem shop của server",
         "`l!buy <id> [số lượng]` — mua vật phẩm",
         "`l!inventory` — xem túi đồ",
@@ -349,8 +348,15 @@ async def balance(ctx, member: discord.Member | None = None):
 
 @bot.command(aliases=["bal"])
 async def xu(ctx, member: discord.Member | None = None):
-    await balance(ctx, member)
+    member = member or ctx.author
+amount = get_balance(member.id)
 
+await ctx.reply(
+    embed=embed(
+        "💰 Số dư Lune",
+        f"{member.mention} đang có **{amount:,} xu**."
+    )
+)
 @bot.command()
 @commands.cooldown(1, 86400, commands.BucketType.user)
 async def daily(ctx):

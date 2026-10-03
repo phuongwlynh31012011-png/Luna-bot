@@ -351,8 +351,7 @@ async def xu(ctx, member: discord.Member | None = None):
     member = member or ctx.author
 amount = get_balance(member.id)
 
-await ctx.reply(
-    embed=embed(
+await ctx.reply(embed=embed(
         "💰 Số dư Lune",
         f"{member.mention} đang có **{amount:,} xu**."
 

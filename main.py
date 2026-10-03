@@ -1,1506 +1,803 @@
 import os
-import random
 import sqlite3
 import asyncio
-from datetime import datetime, timedelta
+import random
+import time
+from datetime import datetime, timedelta, timezone
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 
+# ============================================================
+# LUNA v2 — Discord Bot
+# Prefix: l! or L!
+# Database: SQLite
+# ============================================================
 
-# =========================================================
-# CẤU HÌNH
-# =========================================================
-
-TOKEN = os.getenv("TOKEN")
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))
+TOKEN = os.getenv("TOKEN", "").strip()
+OWNER_ID = int(os.getenv("OWNER_ID", "0") or 0)
 
 PREFIXES = ("l!", "L!")
+DB_FILE = "luna_v2.db"
+
+if not TOKEN:
+    raise RuntimeError("Chưa có TOKEN. Hãy đặt biến môi trường TOKEN.")
+if OWNER_ID == 0:
+    print("⚠️ OWNER_ID chưa được đặt. Các lệnh owner sẽ không dùng được.")
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.guilds = True
 
 bot = commands.Bot(
     command_prefix=PREFIXES,
     intents=intents,
-    help_command=None
+    case_insensitive=True,
+    help_command=None,
 )
 
+# ---------------- DATABASE ----------------
 
-# =========================================================
-# DATABASE
-# =========================================================
-
-db = sqlite3.connect("luna.db")
+db = sqlite3.connect(DB_FILE, check_same_thread=False)
 db.row_factory = sqlite3.Row
-cur = db.cursor()
+db_lock = asyncio.Lock()
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY,
-    xu INTEGER DEFAULT 0,
-    daily_at TEXT DEFAULT '',
-    work_at TEXT DEFAULT ''
-)
-""")
+def db_init():
+    cur = db.cursor()
+    cur.executescript("""
+    CREATE TABLE IF NOT EXISTS users (
+        user_id INTEGER PRIMARY KEY,
+        balance INTEGER NOT NULL DEFAULT 0,
+        daily_at INTEGER NOT NULL DEFAULT 0,
+        work_at INTEGER NOT NULL DEFAULT 0
+    );
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS warnings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    guild_id INTEGER,
-    user_id INTEGER,
-    moderator_id INTEGER,
-    reason TEXT,
-    created_at TEXT
-)
-""")
+    CREATE TABLE IF NOT EXISTS shops (
+        guild_id INTEGER NOT NULL,
+        item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        price INTEGER NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        stock INTEGER NOT NULL DEFAULT -1
+    );
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS marriages (
-    user1 INTEGER PRIMARY KEY,
-    user2 INTEGER
-)
-""")
+    CREATE TABLE IF NOT EXISTS inventory (
+        user_id INTEGER NOT NULL,
+        guild_id INTEGER NOT NULL,
+        item_id INTEGER NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY(user_id, guild_id, item_id)
+    );
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS loves (
-    user_id INTEGER PRIMARY KEY,
-    text TEXT
-)
-""")
+    CREATE TABLE IF NOT EXISTS warnings (
+        guild_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        count INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY(guild_id, user_id)
+    );
 
-db.commit()
+    CREATE TABLE IF NOT EXISTS warn_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        moderator_id INTEGER NOT NULL,
+        reason TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    );
 
+    CREATE TABLE IF NOT EXISTS loves (
+        guild_id INTEGER PRIMARY KEY,
+        content TEXT NOT NULL
+    );
 
-# =========================================================
-# HÀM DATABASE
-# =========================================================
+    CREATE TABLE IF NOT EXISTS marriages (
+        user1 INTEGER NOT NULL,
+        user2 INTEGER NOT NULL,
+        guild_id INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY(user1, user2, guild_id)
+    );
+    """)
+    db.commit()
+
+db_init()
 
 def ensure_user(user_id: int):
-    cur.execute(
-        "INSERT OR IGNORE INTO users(user_id, xu) VALUES(?, 0)",
-        (user_id,)
-    )
+    db.execute("INSERT OR IGNORE INTO users(user_id) VALUES(?)", (user_id,))
     db.commit()
 
-
-def get_xu(user_id: int):
+def balance(user_id: int) -> int:
     ensure_user(user_id)
-    row = cur.execute(
-        "SELECT xu FROM users WHERE user_id=?",
-        (user_id,)
-    ).fetchone()
-    return row["xu"]
+    row = db.execute("SELECT balance FROM users WHERE user_id=?", (user_id,)).fetchone()
+    return int(row["balance"])
 
-
-def add_xu(user_id: int, amount: int):
+def add_balance(user_id: int, amount: int):
     ensure_user(user_id)
-    cur.execute(
-        "UPDATE users SET xu = xu + ? WHERE user_id=?",
-        (amount, user_id)
-    )
+    db.execute("UPDATE users SET balance=balance+? WHERE user_id=?", (amount, user_id))
     db.commit()
 
-
-def set_xu(user_id: int, amount: int):
+def take_balance(user_id: int, amount: int) -> bool:
     ensure_user(user_id)
-    cur.execute(
-        "UPDATE users SET xu=? WHERE user_id=?",
-        (max(0, amount), user_id)
+    cur = db.execute(
+        "UPDATE users SET balance=balance-? WHERE user_id=? AND balance>=?",
+        (amount, user_id, amount),
     )
     db.commit()
+    return cur.rowcount == 1
 
+# ---------------- HELPERS ----------------
 
-def get_cooldown(user_id: int, typ: str):
-    ensure_user(user_id)
-    row = cur.execute(
-        f"SELECT {typ}_at FROM users WHERE user_id=?",
-        (user_id,)
-    ).fetchone()
+def embed(title: str, description: str = "", color: discord.Color = discord.Color.blurple()):
+    return discord.Embed(title=title, description=description, color=color, timestamp=datetime.now(timezone.utc))
 
-    value = row[f"{typ}_at"]
+def money(n: int) -> str:
+    return f"{n:,} xu"
 
-    if not value:
-        return None
+def mention_or_name(user: discord.User | discord.Member) -> str:
+    return user.mention
 
-    try:
-        return datetime.fromisoformat(value)
-    except:
-        return None
-
-
-def set_cooldown(user_id: int, typ: str):
-    cur.execute(
-        f"UPDATE users SET {typ}_at=? WHERE user_id=?",
-        (datetime.now().isoformat(), user_id)
-    )
-    db.commit()
-
-
-# =========================================================
-# EMBED
-# =========================================================
-
-def luna_embed(title, description="", color=0xB77CFF):
-    embed = discord.Embed(
-        title=title,
-        description=description,
-        color=color,
-        timestamp=datetime.now()
-    )
-    embed.set_footer(text="🌙 Luna")
-    return embed
-
-
-# =========================================================
-# KIỂM TRA OWNER
-# =========================================================
-
-def owner_only():
-    async def predicate(ctx):
-        if ctx.author.id != OWNER_ID:
-            await ctx.send(
-                "❌ Lệnh này chỉ dành cho **Owner Bot**.",
-                delete_after=5
-            )
-            return False
-        return True
-
-    return commands.check(predicate)
-
-
-# =========================================================
-# KIỂM TRA ADMIN
-# =========================================================
+def is_owner(user_id: int) -> bool:
+    return user_id == OWNER_ID
 
 def admin_only():
-    async def predicate(ctx):
-        if not ctx.author.guild_permissions.administrator:
-            await ctx.send(
-                "❌ Lệnh này chỉ dành cho **Admin**.",
-                delete_after=5
-            )
-            return False
-        return True
-
+    async def predicate(ctx: commands.Context):
+        return isinstance(ctx.author, discord.Member) and (
+            ctx.author.guild_permissions.administrator
+            or ctx.author.guild_permissions.manage_guild
+        )
     return commands.check(predicate)
 
+def owner_only():
+    async def predicate(ctx: commands.Context):
+        return is_owner(ctx.author.id)
+    return commands.check(predicate)
 
-# =========================================================
-# HELP MENU
-# =========================================================
+def uptime_string() -> str:
+    seconds = int(time.monotonic() - bot.started_at)
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    return f"{days}d {hours}h {minutes}m {seconds}s"
+
+# ---------------- HELP PANEL ----------------
+
+CATEGORIES = {
+    "money": ("💰 Tiền Lune", [
+        "`l!balance` — xem số dư",
+        "`l!give @user <số>` — chuyển xu",
+        "`l!daily` — nhận xu hằng ngày",
+        "`l!work` — làm việc kiếm xu",
+        "`l!shop` — xem shop của server",
+        "`l!shop` — xem shop của server",
+        "`l!buy <id> [số lượng]` — mua vật phẩm",
+        "`l!inventory` — xem túi đồ",
+        "`l!pay @user <số>` — chuyển xu",
+    ]),
+    "games": ("🎮 Trò chơi", [
+        "`l!rps <búa|kéo|bao> <cược>` — oẳn tù tì",
+        "`l!dice <số xúc xắc> <cược>` — gieo xúc xắc d6",
+        "`l!baucua <bầu|cua|tôm|cá|gà|nai> <cược>` — bầu cua",
+        "`l!doan <1-100> <cược>` — đoán số",
+        "`l!doando <đỏ|đen> <cược>` — đoán đỏ/đen",
+    ]),
+    "love": ("💗 SETL", [
+        "`l!setlove <nội dung>` — đặt câu tình yêu",
+        "`l!love [@user]` — xem câu tình yêu",
+        "`l!hon [@user]` — hôn",
+        "`l!xoadau [@user]` — xoa đầu",
+        "`l!tat [@user]` — tát",
+        "`l!om [@user]` — ôm",
+        "`l!be [@user]` — bế",
+        "`l!can @user` — cắn",
+        "`l!kethon @user` — kết hôn",
+        "`l!lyhon @user` — ly hôn",
+    ]),
+    "giveaway": ("🎁 Giveaway", [
+        "`l!giveaway <phút> <phần thưởng>` — tạo giveaway",
+        "`l!gjoin` — tham gia giveaway đang mở",
+        "`l!gend` — kết thúc giveaway gần nhất",
+    ]),
+    "warning": ("⚠️ Cảnh báo", [
+        "`l!warn @user <lý do>` — cảnh cáo",
+        "`l!warnings @user` — xem cảnh cáo",
+        "`l!clearwarn @user` — xoá cảnh cáo",
+        "`l!kick @user [lý do]` — kick",
+        "`l!ban @user [lý do]` — ban",
+        "`l!mute @user <phút> [lý do]` — timeout",
+    ]),
+    "admin": ("🛡️ Quản lý / Setup", [
+        "`l!setshop <tên> | <giá> | <mô tả>` — thêm vật phẩm shop",
+        "`l!editshop <id> <giá>` — sửa giá",
+        "`l!delshop <id>` — xoá vật phẩm",
+        "`l!clearshop` — xoá shop server",
+        "`l!setlove <nội dung>` — đổi nội dung SETL",
+        "`l!setlog #kênh` — đặt kênh log cảnh cáo",
+    ]),
+    "owner": ("👑 Owner Bot", [
+        "`l!botinfo` — thông tin Luna",
+        "`l!servers` — danh sách server",
+        "`l!say <nội dung>` — Luna gửi tin",
+        "`l!shutdown` — tắt bot",
+        "`l!sync` — đồng bộ slash commands",
+    ]),
+}
 
 class HelpSelect(discord.ui.Select):
-    def __init__(self, owner_id):
-        self.owner_id = owner_id
-
+    def __init__(self):
         options = [
-            discord.SelectOption(
-                label="Tiền Lune",
-                value="money",
-                emoji="💰"
-            ),
-            discord.SelectOption(
-                label="Trò chơi",
-                value="games",
-                emoji="🎮"
-            ),
-            discord.SelectOption(
-                label="SETL",
-                value="setl",
-                emoji="💗"
-            ),
-            discord.SelectOption(
-                label="Giveaway",
-                value="giveaway",
-                emoji="🎁"
-            ),
-            discord.SelectOption(
-                label="Cảnh báo",
-                value="warn",
-                emoji="⚠️"
-            ),
-            discord.SelectOption(
-                label="Quản lý",
-                value="admin",
-                emoji="🛡️"
-            ),
-            discord.SelectOption(
-                label="Owner Bot",
-                value="owner",
-                emoji="👑"
-            )
+            discord.SelectOption(label="Tiền Lune", emoji="💰", value="money"),
+            discord.SelectOption(label="Trò chơi", emoji="🎮", value="games"),
+            discord.SelectOption(label="SETL", emoji="💗", value="love"),
+            discord.SelectOption(label="Giveaway", emoji="🎁", value="giveaway"),
+            discord.SelectOption(label="Cảnh báo", emoji="⚠️", value="warning"),
+            discord.SelectOption(label="Quản lý", emoji="🛡️", value="admin"),
+            discord.SelectOption(label="Owner Bot", emoji="👑", value="owner"),
         ]
-
-        super().__init__(
-            placeholder="Chọn danh mục",
-            options=options
-        )
+        super().__init__(placeholder="Chọn danh mục", options=options)
 
     async def callback(self, interaction: discord.Interaction):
-
-        if interaction.user.id != self.owner_id:
+        key = self.values[0]
+        title, lines = CATEGORIES[key]
+        if key == "owner" and not is_owner(interaction.user.id):
             await interaction.response.send_message(
-                "❌ Đây không phải bảng điều khiển của bạn.",
-                ephemeral=True
+                "🔒 Mục Owner Bot chỉ chủ bot mới xem được.", ephemeral=True
             )
             return
-
-        value = self.values[0]
-
-        if value == "money":
-            text = """
-**💰 TIỀN LUNE**
-
-`l!balance`
-→ Xem số Xu Lune.
-
-`l!daily`
-→ Nhận **300–600 Xu**, cooldown 24 giờ.
-
-`l!work`
-→ Làm việc nhận **50–100 Xu**, cooldown 1 giờ.
-
-`l!give @user số_xu`
-→ Chuyển Xu cho thành viên.
-
-`l!leaderboard`
-→ Xem bảng xếp hạng Xu.
-"""
-
-        elif value == "games":
-            text = """
-**🎮 TRÒ CHƠI**
-
-`l!coinflip số_xu`
-→ Tung đồng xu.
-
-`l!dice số_xu`
-→ Chơi xúc xắc.
-
-`l!slots số_xu`
-→ Máy slot.
-
-`l!rps số_xu`
-→ Kéo búa bao.
-
-`l!guess số_xu`
-→ Đoán số.
-"""
-
-        elif value == "setl":
-            text = """
-**💗 SETL**
-
-`l!hon @user`
-→ Hôn.
-
-`l!xoadau @user`
-→ Xoa đầu.
-
-`l!tat @user`
-→ Tát.
-
-`l!om @user`
-→ Ôm.
-
-`l!be @user`
-→ Bế.
-
-`l!can @user`
-→ Cắn.
-"""
-
-        elif value == "giveaway":
-            text = """
-**🎁 GIVEAWAY**
-
-`l!giveaway số_phút phần_thưởng`
-→ Tạo giveaway.
-
-Ví dụ:
-
-`l!giveaway 10 500`
-
-→ Giveaway 10 phút, phần thưởng 500 Xu.
-"""
-
-        elif value == "warn":
-            if not interaction.user.guild_permissions.administrator:
-                text = "❌ Bạn cần quyền **Administrator** để xem nhóm này."
-            else:
-                text = """
-**⚠️ CẢNH BÁO — ADMIN**
-
-`l!warn @user lý_do`
-→ Cảnh báo thành viên.
-
-`l!warnings @user`
-→ Xem cảnh báo.
-
-`l!unwarn @user`
-→ Xóa cảnh báo gần nhất.
-
-`l!clearwarn @user`
-→ Xóa toàn bộ cảnh báo.
-"""
-
-        elif value == "admin":
-            if not interaction.user.guild_permissions.administrator:
-                text = "❌ Bạn cần quyền **Administrator** để xem nhóm này."
-            else:
-                text = """
-**🛡️ QUẢN LÝ — ADMIN**
-
-`l!kick @user lý_do`
-→ Kick thành viên.
-
-`l!ban @user lý_do`
-→ Ban thành viên.
-
-`l!unban ID`
-→ Gỡ ban.
-
-`l!clear số_lượng`
-→ Xóa tin nhắn.
-
-`l!lock`
-→ Khóa kênh.
-
-`l!unlock`
-→ Mở khóa kênh.
-"""
-
-        else:
-            if interaction.user.id != OWNER_ID:
-                text = "❌ Nhóm này chỉ dành cho **Owner Bot**."
-            else:
-                text = """
-**👑 OWNER BOT**
-
-`l!cheat @user số_xu`
-→ Cộng Xu cho thành viên.
-
-`l!setxu @user số_xu`
-→ Đặt số Xu.
-
-`l!giveall số_xu`
-→ Cộng Xu cho tất cả thành viên.
-
-`l!shutdown`
-→ Tắt bot.
-
-`l!reload`
-→ Reload bot.
-"""
-
-        embed = luna_embed("🌙・BẢNG ĐIỀU KHIỂN LUNA", text)
-        await interaction.response.edit_message(
-            embed=embed,
-            view=self.view
-        )
-
+        if key == "admin" and not (
+            isinstance(interaction.user, discord.Member)
+            and (interaction.user.guild_permissions.administrator or interaction.user.guild_permissions.manage_guild)
+        ):
+            await interaction.response.send_message(
+                "🔒 Mục Quản lý chỉ Admin/Manage Server mới xem được.", ephemeral=True
+            )
+            return
+        e = embed(f"🌙 LUNA • {title}", "\n".join(lines))
+        await interaction.response.edit_message(embed=e, view=self.view)
 
 class HelpView(discord.ui.View):
-    def __init__(self, owner_id):
-        super().__init__(timeout=180)
-        self.add_item(HelpSelect(owner_id))
-
-
-async def send_help(target):
-    embed = luna_embed(
-        "🌙・LUNA",
-        """
-**Danh sách các lệnh của Luna**
-
-💰 Tiền Lune  
-🎮 Trò chơi  
-💗 SETL  
-🎁 Giveaway  
-⚠️ Cảnh báo  
-🛡️ Quản lý  
-👑 Owner Bot
-
-**Tiền tố:** `l!` hoặc `L!`
-
-Chọn một danh mục bên dưới để xem lệnh.
-"""
-    )
-
-    view = HelpView(target.author.id)
-
-    await target.send(
-        embed=embed,
-        view=view
-    )
-
-
-# =========================================================
-# PREFIX HELP
-# =========================================================
-
-@bot.command(name="help")
-async def help_prefix(ctx):
-    await send_help(ctx)
-
-
-# =========================================================
-# SLASH HELP
-# =========================================================
-
-@bot.tree.command(name="help", description="Mở bảng điều khiển lệnh Luna")
-async def help_slash(interaction: discord.Interaction):
-
-    embed = luna_embed(
-        "🌙・LUNA",
-        """
-**Danh sách các lệnh của Luna**
-
-💰 Tiền Lune
-🎮 Trò chơi
-💗 SETL
-🎁 Giveaway
-⚠️ Cảnh báo
-🛡️ Quản lý
-👑 Owner Bot
-
-Chọn danh mục bên dưới.
-"""
-    )
-
-    await interaction.response.send_message(
-        embed=embed,
-        view=HelpView(interaction.user.id)
-    )
-
-
-# =========================================================
-# HELLO
-# =========================================================
-
-@bot.command(name="hello")
-async def hello_prefix(ctx):
-    await ctx.send(f"🌙 Xin chào {ctx.author.mention}! Luna đã sẵn sàng.")
-
-
-@bot.tree.command(name="hello", description="Luna chào bạn")
-async def hello_slash(interaction: discord.Interaction):
-    await interaction.response.send_message(
-        f"🌙 Xin chào {interaction.user.mention}! Luna đã sẵn sàng."
-    )
-
-
-# =========================================================
-# BALANCE
-# =========================================================
-
-@bot.command(name="balance", aliases=["bal", "xu"])
-async def balance(ctx, member: discord.Member = None):
-
-    member = member or ctx.author
-    amount = get_xu(member.id)
-
-    embed = luna_embed(
-        "💰・XU LUNE",
-        f"**{member.display_name}** đang có\n\n"
-        f"🌙 **{amount:,} Xu Lune**"
-    )
-
-    await ctx.send(embed=embed)
-
-
-# =========================================================
-# DAILY
-# =========================================================
-
-@bot.command(name="daily")
-async def daily(ctx):
-
-    old = get_cooldown(ctx.author.id, "daily")
-
-    if old:
-        next_time = old + timedelta(hours=24)
-        if datetime.now() < next_time:
-            remaining = next_time - datetime.now()
-            hours = int(remaining.total_seconds() // 3600)
-            minutes = int(
-                remaining.total_seconds() % 3600 // 60
-            )
-
-            await ctx.send(
-                f"⏳ Bạn đã nhận daily rồi.\n"
-                f"Thử lại sau **{hours} giờ {minutes} phút**."
-            )
-            return
-
-    amount = random.randint(300, 600)
-
-    add_xu(ctx.author.id, amount)
-    set_cooldown(ctx.author.id, "daily")
-
-    await ctx.send(
-        f"🎁 {ctx.author.mention} nhận được "
-        f"**{amount:,} Xu Lune** từ daily!"
-    )
-
-
-# =========================================================
-# WORK
-# =========================================================
-
-@bot.command(name="work")
-async def work(ctx):
-
-    old = get_cooldown(ctx.author.id, "work")
-
-    if old:
-        next_time = old + timedelta(hours=1)
-
-        if datetime.now() < next_time:
-            remaining = next_time - datetime.now()
-
-            minutes = int(
-                remaining.total_seconds() // 60
-            )
-
-            await ctx.send(
-                f"⏳ Bạn đang nghỉ sau ca làm.\n"
-                f"Thử lại sau **{minutes} phút**."
-            )
-            return
-
-    amount = random.randint(50, 100)
-
-    add_xu(ctx.author.id, amount)
-    set_cooldown(ctx.author.id, "work")
-
-    jobs = [
-        "phục vụ quán cà phê",
-        "làm freelancer",
-        "chăm sóc vườn",
-        "đi giao hàng",
-        "làm việc tại cửa hàng"
-    ]
-
-    job = random.choice(jobs)
-
-    await ctx.send(
-        f"💼 {ctx.author.mention} vừa **{job}** "
-        f"và nhận **{amount:,} Xu Lune**!"
-    )
-
-
-# =========================================================
-# GIVE
-# =========================================================
-
-@bot.command(name="give")
-async def give(ctx, member: discord.Member, amount: int):
-
-    if member.id == ctx.author.id:
-        await ctx.send("❌ Không thể tự chuyển Xu cho chính mình.")
-        return
-
-    if amount <= 0:
-        await ctx.send("❌ Số Xu phải lớn hơn 0.")
-        return
-
-    balance = get_xu(ctx.author.id)
-
-    if balance < amount:
-        await ctx.send("❌ Bạn không đủ Xu Lune.")
-        return
-
-    add_xu(ctx.author.id, -amount)
-    add_xu(member.id, amount)
-
-    await ctx.send(
-        f"💸 {ctx.author.mention} đã chuyển "
-        f"**{amount:,} Xu Lune** cho {member.mention}."
-    )
-
-
-# =========================================================
-# LEADERBOARD
-# =========================================================
-
-@bot.command(name="leaderboard", aliases=["top"])
-async def leaderboard(ctx):
-
-    rows = cur.execute("""
-        SELECT user_id, xu
-        FROM users
-        ORDER BY xu DESC
-        LIMIT 10
-    """).fetchall()
-
-    if not rows:
-        await ctx.send("Chưa có dữ liệu.")
-        return
-
-    text = ""
-
-    for i, row in enumerate(rows, 1):
-        member = ctx.guild.get_member(row["user_id"])
-
-        if member:
-            name = member.display_name
-        else:
-            name = f"User {row['user_id']}"
-
-        text += (
-            f"**{i}.** {name} — "
-            f"🌙 `{row['xu']:,}`\n"
-        )
-
-    embed = luna_embed(
-        "🏆・TOP XU LUNE",
-        text
-    )
-
-    await ctx.send(embed=embed)
-
-
-# =========================================================
-# GAME: COINFLIP
-# =========================================================
-
-@bot.command(name="coinflip", aliases=["cf"])
-async def coinflip(ctx, amount: int):
-
-    if amount <= 0:
-        await ctx.send("❌ Số Xu không hợp lệ.")
-        return
-
-    if get_xu(ctx.author.id) < amount:
-        await ctx.send("❌ Bạn không đủ Xu.")
-        return
-
-    result = random.choice(["🪙 Mặt ngửa", "🪙 Mặt sấp"])
-
-    win = random.choice([True, False])
-
-    if win:
-        add_xu(ctx.author.id, amount)
-        msg = f"🎉 Bạn thắng và nhận **{amount:,} Xu**!\n{result}"
-    else:
-        add_xu(ctx.author.id, -amount)
-        msg = f"💸 Bạn thua **{amount:,} Xu**.\n{result}"
-
-    await ctx.send(msg)
-
-
-# =========================================================
-# GAME: DICE
-# =========================================================
-
-@bot.command(name="dice")
-async def dice(ctx, amount: int):
-
-    if amount <= 0:
-        await ctx.send("❌ Số Xu không hợp lệ.")
-        return
-
-    if get_xu(ctx.author.id) < amount:
-        await ctx.send("❌ Bạn không đủ Xu.")
-        return
-
-    player = random.randint(1, 6)
-    luna = random.randint(1, 6)
-
-    if player > luna:
-        add_xu(ctx.author.id, amount)
-        result = f"🎉 Bạn thắng **+{amount:,} Xu**!"
-    elif player < luna:
-        add_xu(ctx.author.id, -amount)
-        result = f"💸 Bạn thua **-{amount:,} Xu**!"
-    else:
-        result = "🤝 Hòa! Không mất Xu."
-
-    await ctx.send(
-        f"🎲 Bạn: **{player}**\n"
-        f"🌙 Luna: **{luna}**\n\n"
-        f"{result}"
-    )
-
-
-# =========================================================
-# GAME: SLOTS
-# =========================================================
-
-@bot.command(name="slots")
-async def slots(ctx, amount: int):
-
-    if amount <= 0:
-        await ctx.send("❌ Số Xu không hợp lệ.")
-        return
-
-    if get_xu(ctx.author.id) < amount:
-        await ctx.send("❌ Bạn không đủ Xu.")
-        return
-
-    icons = ["🍒", "🍋", "🍉", "⭐", "💎"]
-    result = [random.choice(icons) for _ in range(3)]
-
-    if result[0] == result[1] == result[2]:
-        reward = amount * 3
-        add_xu(ctx.author.id, reward)
-
-        msg = f"🎉 JACKPOT! **+{reward:,} Xu**"
-    elif len(set(result)) == 2:
-        reward = amount
-        add_xu(ctx.author.id, reward)
-
-        msg = f"✨ Bạn thắng **+{reward:,} Xu**"
-    else:
-        add_xu(ctx.author.id, -amount)
-
-        msg = f"💸 Bạn mất **{amount:,} Xu**"
-
-    await ctx.send(
-        f"🎰・` {' | '.join(result)} `\n\n{msg}"
-    )
-
-
-# =========================================================
-# GAME: RPS
-# =========================================================
-
-@bot.command(name="rps")
-async def rps(ctx, amount: int):
-
-    if amount <= 0:
-        await ctx.send("❌ Số Xu không hợp lệ.")
-        return
-
-    if get_xu(ctx.author.id) < amount:
-        await ctx.send("❌ Bạn không đủ Xu.")
-        return
-
-    choices = ["kéo", "búa", "bao"]
-    bot_choice = random.choice(choices)
-
-    player = random.choice(choices)
-
-    if player == bot_choice:
-        result = "🤝 Hòa!"
-    elif (
-        (player == "kéo" and bot_choice == "bao") or
-        (player == "búa" and bot_choice == "kéo") or
-        (player == "bao" and bot_choice == "búa")
-    ):
-        add_xu(ctx.author.id, amount)
-        result = f"🎉 Thắng **+{amount:,} Xu**!"
-    else:
-        add_xu(ctx.author.id, -amount)
-        result = f"💸 Thua **-{amount:,} Xu**!"
-
-    await ctx.send(
-        f"✊ Bạn: **{player}**\n"
-        f"🌙 Luna: **{bot_choice}**\n\n"
-        f"{result}"
-    )
-
-
-# =========================================================
-# GAME: GUESS
-# =========================================================
-
-@bot.command(name="guess")
-async def guess(ctx, amount: int):
-
-    if amount <= 0:
-        await ctx.send("❌ Số Xu không hợp lệ.")
-        return
-
-    if get_xu(ctx.author.id) < amount:
-        await ctx.send("❌ Bạn không đủ Xu.")
-        return
-
-    number = random.randint(1, 5)
-    guess_number = random.randint(1, 5)
-
-    if number == guess_number:
-        reward = amount * 2
-        add_xu(ctx.author.id, reward)
-
-        result = f"🎉 Đoán đúng! **+{reward:,} Xu**"
-    else:
-        add_xu(ctx.author.id, -amount)
-
-        result = f"💸 Đoán sai! **-{amount:,} Xu**"
-
-    await ctx.send(
-        f"🔢 Số của Luna: **{number}**\n"
-        f"🎯 Bạn đoán: **{guess_number}**\n\n"
-        f"{result}"
-    )
-
-
-# =========================================================
-# SETL
-# =========================================================
-
-async def action(ctx, member, action_name, emoji):
-
-    if member.id == ctx.author.id:
-        await ctx.send("❌ Không thể dùng lệnh này với chính mình.")
-        return
-
-    await ctx.send(
-        f"{emoji} {ctx.author.mention} **{action_name}** "
-        f"{member.mention}!"
-    )
-
-
-@bot.command(name="hon")
-async def hon(ctx, member: discord.Member):
-    await action(ctx, member, "hôn", "💋")
-
-
-@bot.command(name="xoadau")
-async def xoadau(ctx, member: discord.Member):
-    await action(ctx, member, "xoa đầu", "🌸")
-
-
-@bot.command(name="tat")
-async def tat(ctx, member: discord.Member):
-    await action(ctx, member, "tát", "👋")
-
-
-@bot.command(name="om")
-async def om(ctx, member: discord.Member):
-    await action(ctx, member, "ôm", "🫂")
-
-
-@bot.command(name="be")
-async def be(ctx, member: discord.Member):
-    await action(ctx, member, "bế", "🫶")
-
-
-@bot.command(name="can")
-async def can(ctx, member: discord.Member):
-    await action(ctx, member, "cắn nhẹ", "🦷")
-
-
-# =========================================================
-# LOVE
-# =========================================================
-
-@bot.command(name="setlove")
-async def setlove(ctx, *, text: str):
-
-    cur.execute(
-        "INSERT OR REPLACE INTO loves(user_id, text) VALUES(?, ?)",
-        (ctx.author.id, text)
-    )
-    db.commit()
-
-    await ctx.send(
-        f"💗 Đã đặt trạng thái tình yêu của "
-        f"{ctx.author.mention} thành:\n> {text}"
-    )
-
-
-@bot.command(name="love")
-async def love(ctx, member: discord.Member = None):
-
-    member = member or ctx.author
-
-    row = cur.execute(
-        "SELECT text FROM loves WHERE user_id=?",
-        (member.id,)
-    ).fetchone()
-
-    if not row:
-        await ctx.send(
-            f"💗 {member.mention} chưa đặt trạng thái tình yêu."
-        )
-        return
-
-    await ctx.send(
-        f"💗 Trạng thái tình yêu của {member.mention}:\n"
-        f"> {row['text']}"
-    )
-
-
-@bot.command(name="kethon")
-async def kethon(ctx, member: discord.Member):
-
-    if member.id == ctx.author.id:
-        await ctx.send("❌ Không thể kết hôn với chính mình.")
-        return
-
-    cur.execute(
-        "INSERT OR REPLACE INTO marriages(user1, user2) VALUES(?, ?)",
-        (ctx.author.id, member.id)
-    )
-
-    db.commit()
-
-    await ctx.send(
-        f"💍 {ctx.author.mention} và {member.mention} "
-        f"đã kết hôn!"
-    )
-
-
-@bot.command(name="cr")
-async def cr(ctx, member: discord.Member = None):
-
-    if member is None:
-        await ctx.send("💗 Hãy tag người bạn crush.")
-        return
-
-    percent = random.randint(1, 100)
-
-    await ctx.send(
-        f"💗 Độ hợp nhau giữa "
-        f"{ctx.author.mention} và {member.mention}: "
-        f"**{percent}%**"
-    )
-
-
-@bot.command(name="lyhon")
-async def lyhon(ctx):
-
-    row = cur.execute(
-        "SELECT user2 FROM marriages WHERE user1=?",
-        (ctx.author.id,)
-    ).fetchone()
-
-    if not row:
-        row = cur.execute(
-            "SELECT user1 FROM marriages WHERE user2=?",
-            (ctx.author.id,)
-        ).fetchone()
-
-    if not row:
-        await ctx.send("❌ Bạn chưa kết hôn.")
-        return
-
-    cur.execute(
-        "DELETE FROM marriages WHERE user1=? OR user2=?",
-        (ctx.author.id, ctx.author.id)
-    )
-    db.commit()
-
-    await ctx.send(
-        f"💔 {ctx.author.mention} đã kết thúc cuộc hôn nhân."
-    )
-
-
-# =========================================================
-# WARN
-# =========================================================
-
-@bot.command(name="warn")
-@admin_only()
-async def warn(ctx, member: discord.Member, *, reason="Không có lý do"):
-
-    cur.execute("""
-        INSERT INTO warnings(
-            guild_id,
-            user_id,
-            moderator_id,
-            reason,
-            created_at
-        )
-        VALUES(?, ?, ?, ?, ?)
-    """, (
-        ctx.guild.id,
-        member.id,
-        ctx.author.id,
-        reason,
-        datetime.now().isoformat()
-    ))
-
-    db.commit()
-
-    count = cur.execute("""
-        SELECT COUNT(*)
-        FROM warnings
-        WHERE guild_id=? AND user_id=?
-    """, (
-        ctx.guild.id,
-        member.id
-    )).fetchone()[0]
-
-    await ctx.send(
-        f"⚠️ {member.mention} đã nhận **cảnh báo #{count}**.\n"
-        f"📝 Lý do: {reason}"
-    )
-
-
-@bot.command(name="warnings")
-@admin_only()
-async def warnings(ctx, member: discord.Member):
-
-    rows = cur.execute("""
-        SELECT reason, moderator_id, created_at
-        FROM warnings
-        WHERE guild_id=? AND user_id=?
-        ORDER BY id DESC
-    """, (
-        ctx.guild.id,
-        member.id
-    )).fetchall()
-
-    if not rows:
-        await ctx.send(
-            f"✅ {member.mention} không có cảnh báo."
-        )
-        return
-
-    text = ""
-
-    for i, row in enumerate(rows, 1):
-        text += (
-            f"**#{i}** — {row['reason']}\n"
-        )
-
-    await ctx.send(
-        embed=luna_embed(
-            f"⚠️ CẢNH BÁO — {member.display_name}",
-            text
-        )
-    )
-
-
-@bot.command(name="unwarn")
-@admin_only()
-async def unwarn(ctx, member: discord.Member):
-
-    row = cur.execute("""
-        SELECT id
-        FROM warnings
-        WHERE guild_id=? AND user_id=?
-        ORDER BY id DESC
-        LIMIT 1
-    """, (
-        ctx.guild.id,
-        member.id
-    )).fetchone()
-
-    if not row:
-        await ctx.send("❌ Thành viên này không có cảnh báo.")
-        return
-
-    cur.execute(
-        "DELETE FROM warnings WHERE id=?",
-        (row["id"],)
-    )
-    db.commit()
-
-    await ctx.send(
-        f"✅ Đã xóa cảnh báo gần nhất của {member.mention}."
-    )
-
-
-@bot.command(name="clearwarn")
-@admin_only()
-async def clearwarn(ctx, member: discord.Member):
-
-    cur.execute("""
-        DELETE FROM warnings
-        WHERE guild_id=? AND user_id=?
-    """, (
-        ctx.guild.id,
-        member.id
-    ))
-
-    db.commit()
-
-    await ctx.send(
-        f"✅ Đã xóa toàn bộ cảnh báo của {member.mention}."
-    )
-
-
-# =========================================================
-# ADMIN: KICK
-# =========================================================
-
-@bot.command(name="kick")
-@admin_only()
-async def kick(ctx, member: discord.Member, *, reason="Không có lý do"):
-
-    try:
-        await member.kick(reason=reason)
-
-        await ctx.send(
-            f"👢 Đã kick {member.mention}.\n"
-            f"📝 Lý do: {reason}"
-        )
-    except discord.Forbidden:
-        await ctx.send("❌ Luna không đủ quyền kick thành viên này.")
-
-
-# =========================================================
-# ADMIN: BAN
-# =========================================================
-
-@bot.command(name="ban")
-@admin_only()
-async def ban(ctx, member: discord.Member, *, reason="Không có lý do"):
-
-    try:
-        await member.ban(reason=reason)
-
-        await ctx.send(
-            f"🔨 Đã ban {member.mention}.\n"
-            f"📝 Lý do: {reason}"
-        )
-    except discord.Forbidden:
-        await ctx.send("❌ Luna không đủ quyền ban thành viên này.")
-
-
-# =========================================================
-# ADMIN: UNBAN
-# =========================================================
-
-@bot.command(name="unban")
-@admin_only()
-async def unban(ctx, user_id: int):
-
-    try:
-        user = await bot.fetch_user(user_id)
-        await ctx.guild.unban(user)
-
-        await ctx.send(
-            f"✅ Đã unban **{user}**."
-        )
-
-    except discord.NotFound:
-        await ctx.send("❌ Không tìm thấy user hoặc user chưa bị ban.")
-
-    except discord.Forbidden:
-        await ctx.send("❌ Luna không có quyền unban.")
-
-
-# =========================================================
-# ADMIN: CLEAR
-# =========================================================
-
-@bot.command(name="clear")
-@admin_only()
-async def clear(ctx, amount: int):
-
-    if amount < 1 or amount > 100:
-        await ctx.send("❌ Nhập số từ 1 đến 100.")
-        return
-
-    deleted = await ctx.channel.purge(limit=amount + 1)
-
-    msg = await ctx.send(
-        f"🧹 Đã xóa **{len(deleted) - 1}** tin nhắn."
-    )
-
-    await asyncio.sleep(3)
-
-    try:
-        await msg.delete()
-    except:
-        pass
-
-
-# =========================================================
-# ADMIN: LOCK
-# =========================================================
-
-@bot.command(name="lock")
-@admin_only()
-async def lock(ctx):
-
-    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
-    overwrite.send_messages = False
-
-    await ctx.channel.set_permissions(
-        ctx.guild.default_role,
-        overwrite=overwrite
-    )
-
-    await ctx.send("🔒 Đã khóa kênh.")
-
-
-# =========================================================
-# ADMIN: UNLOCK
-# =========================================================
-
-@bot.command(name="unlock")
-@admin_only()
-async def unlock(ctx):
-
-    overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
-    overwrite.send_messages = None
-
-    await ctx.channel.set_permissions(
-        ctx.guild.default_role,
-        overwrite=overwrite
-    )
-
-    await ctx.send("🔓 Đã mở khóa kênh.")
-
-
-# =========================================================
-# OWNER: CHEAT
-# =========================================================
-
-@bot.command(name="cheat")
-@owner_only()
-async def cheat(ctx, member: discord.Member, amount: int):
-
-    if amount == 0:
-        await ctx.send("❌ Số Xu không hợp lệ.")
-        return
-
-    add_xu(member.id, amount)
-
-    await ctx.send(
-        f"👑 Owner đã thay đổi Xu của {member.mention} "
-        f"**{amount:+,} Xu**."
-    )
-
-
-# =========================================================
-# OWNER: SET XU
-# =========================================================
-
-@bot.command(name="setxu")
-@owner_only()
-async def setxu(ctx, member: discord.Member, amount: int):
-
-    if amount < 0:
-        await ctx.send("❌ Số Xu không thể âm.")
-        return
-
-    set_xu(member.id, amount)
-
-    await ctx.send(
-        f"👑 Đã đặt số Xu của {member.mention} thành "
-        f"**{amount:,} Xu**."
-    )
-
-
-# =========================================================
-# OWNER: GIVE ALL
-# =========================================================
-
-@bot.command(name="giveall")
-@owner_only()
-async def giveall(ctx, amount: int):
-
-    if amount <= 0:
-        await ctx.send("❌ Số Xu không hợp lệ.")
-        return
-
-    count = 0
-
-    for member in ctx.guild.members:
-
-        if member.bot:
-            continue
-
-        add_xu(member.id, amount)
-        count += 1
-
-    await ctx.send(
-        f"👑 Đã cộng **{amount:,} Xu** cho "
-        f"**{count} thành viên**."
-    )
-
-
-# =========================================================
-# OWNER: SHUTDOWN
-# =========================================================
-
-@bot.command(name="shutdown")
-@owner_only()
-async def shutdown(ctx):
-
-    await ctx.send("🌙 Luna đang tắt...")
-
-    await bot.close()
-
-
-# =========================================================
-# OWNER: RELOAD
-# =========================================================
-
-@bot.command(name="reload")
-@owner_only()
-async def reload_bot(ctx):
-
-    await ctx.send(
-        "🔄 Luna đã nhận lệnh reload.\n"
-        "Nếu chạy trên Railway, hãy Restart Deployment để khởi động lại."
-    )
-
-
-# =========================================================
-# GIVEAWAY
-# =========================================================
-
-class GiveawayView(discord.ui.View):
-
-    def __init__(self, prize, author_id):
-        super().__init__(timeout=None)
-
-        self.prize = prize
-        self.author_id = author_id
-        self.users = set()
-
-    @discord.ui.button(
-        label="Tham gia",
-        emoji="🎉",
-        style=discord.ButtonStyle.primary
-    )
-    async def join(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-
-        if interaction.user.id in self.users:
-            self.users.remove(interaction.user.id)
-
-            await interaction.response.send_message(
-                "Bạn đã rời giveaway.",
-                ephemeral=True
-            )
-
-        else:
-            self.users.add(interaction.user.id)
-
-            await interaction.response.send_message(
-                "🎉 Đã tham gia giveaway!",
-                ephemeral=True
-            )
-
-
-@bot.command(name="giveaway")
-@admin_only()
-async def giveaway(ctx, minutes: int, *, prize: str):
-
-    if minutes < 1:
-        await ctx.send("❌ Thời gian phải lớn hơn 0.")
-        return
-
-    end_time = datetime.now() + timedelta(minutes=minutes)
-
-    embed = luna_embed(
-        "🎁・GIVEAWAY",
-        f"""
-🎁 **Phần thưởng:** {prize}
-
-👑 Người tạo: {ctx.author.mention}
-
-⏰ Kết thúc: <t:{int(end_time.timestamp())}:R>
-
-Nhấn nút **🎉 Tham gia** bên dưới để tham gia.
-"""
-    )
-
-    view = GiveawayView(prize, ctx.author.id)
-
-    message = await ctx.send(
-        embed=embed,
-        view=view
-    )
-
-    await asyncio.sleep(minutes * 60)
-
-    if not view.users:
-        await ctx.send(
-            "🎁 Giveaway kết thúc nhưng không có người tham gia."
-        )
-        return
-
-    winner_id = random.choice(list(view.users))
-
-    winner = ctx.guild.get_member(winner_id)
-
-    await ctx.send(
-        f"🎉 Chúc mừng {winner.mention}!\n"
-        f"Bạn đã thắng giveaway **{prize}**!"
-    )
-
-
-# =========================================================
-# ERROR HANDLER
-# =========================================================
-
-@bot.event
-async def on_command_error(ctx, error):
-
-    if isinstance(error, commands.CommandNotFound):
-        return
-
-    if isinstance(error, commands.MissingPermissions):
-        await ctx.send(
-            "❌ Bạn không có quyền dùng lệnh này.",
-            delete_after=5
-        )
-        return
-
-    if isinstance(error, commands.CheckFailure):
-        return
-
-    if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(
-            "❌ Thiếu thông tin.\n"
-            "Dùng `l!help` để xem cách sử dụng."
-        )
-        return
-
-    if isinstance(error, commands.MemberNotFound):
-        await ctx.send(
-            "❌ Không tìm thấy thành viên đó."
-        )
-        return
-
-    if isinstance(error, commands.BadArgument):
-        await ctx.send(
-            "❌ Sai định dạng lệnh."
-        )
-        return
-
-    print("COMMAND ERROR:", repr(error))
-
-
-# =========================================================
-# BOT READY
-# =========================================================
+    def __init__(self):
+        super().__init__(timeout=300)
+        self.add_item(HelpSelect())
+
+# ---------------- EVENTS ----------------
 
 @bot.event
 async def on_ready():
-
+    bot.started_at = getattr(bot, "started_at", time.monotonic())
     try:
-        synced = await bot.tree.sync()
-        print(f"Đã sync {len(synced)} slash commands.")
+        await bot.tree.sync()
     except Exception as e:
-        print("Lỗi sync slash:", e)
+        print("Slash sync error:", e)
+    print(f"🌙 Luna v2 online: {bot.user} | {bot.user.id}")
 
-    print("=" * 40)
-    print(f"🌙 Luna đã online: {bot.user}")
-    print(f"🆔 Bot ID: {bot.user.id}")
-    print(f"👑 Owner ID: {OWNER_ID}")
-    print("=" * 40)
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.reply("❌ Thiếu tham số. Dùng `l!help` để xem cú pháp.")
+    elif isinstance(error, commands.BadArgument):
+        await ctx.reply("❌ Tham số không hợp lệ. Kiểm tra lại cú pháp.")
+    elif isinstance(error, commands.CheckFailure):
+        await ctx.reply("🔒 Bạn không có quyền dùng lệnh này.")
+    elif isinstance(error, commands.CommandOnCooldown):
+        await ctx.reply(f"⏳ Thử lại sau `{error.retry_after:.1f}s`.")
+    else:
+        print("COMMAND ERROR:", repr(error))
+        await ctx.reply("❌ Có lỗi khi thực hiện lệnh.")
 
+# ---------------- BASIC ----------------
 
-# =========================================================
-# CHẠY BOT
-# =========================================================
+@bot.command(name="hello")
+async def hello(ctx):
+    await ctx.reply(f"🌙 Xin chào {ctx.author.mention}! Luna v2 đã sẵn sàng.")
 
-if not TOKEN:
-    raise RuntimeError(
-        "Chưa có TOKEN. Hãy thêm biến môi trường TOKEN trên Railway."
+@bot.command(name="help", aliases=["h"])
+async def help_cmd(ctx):
+    e = embed(
+        "🌙 • LUNA",
+        "Danh sách các lệnh của Luna\n\n"
+        "💰 Tiền Lune\n"
+        "🎮 Trò chơi\n"
+        "💗 SETL\n"
+        "🎁 Giveaway\n"
+        "⚠️ Cảnh báo\n"
+        "🛡️ Quản lý\n"
+        "👑 Owner Bot\n\n"
+        "Chọn danh mục bên dưới."
     )
+    await ctx.reply(embed=e, view=HelpView())
 
-if OWNER_ID == 0:
-    print(
-        "⚠️ Chưa đặt OWNER_ID. "
-        "Các lệnh Owner sẽ không sử dụng được."
+@bot.tree.command(name="hello", description="Luna chào bạn")
+async def slash_hello(interaction: discord.Interaction):
+    await interaction.response.send_message(f"🌙 Xin chào {interaction.user.mention}! Luna v2 đã sẵn sàng.")
+
+@bot.tree.command(name="help", description="Mở bảng điều khiển lệnh Luna")
+async def slash_help(interaction: discord.Interaction):
+    e = embed(
+        "🌙 • LUNA",
+        "Danh sách các lệnh của Luna\n\n💰 Tiền Lune\n🎮 Trò chơi\n💗 SETL\n🎁 Giveaway\n⚠️ Cảnh báo\n🛡️ Quản lý\n👑 Owner Bot\n\nChọn danh mục bên dưới."
     )
+    await interaction.response.send_message(embed=e, view=HelpView())
 
+@bot.command(name="botinfo", aliases=["info"])
+async def botinfo(ctx):
+    pyver = f"{__import__('sys').version_info.major}.{__import__('sys').version_info.minor}.{__import__('sys').version_info.micro}"
+    e = embed(
+        "🌙 LUNA — THÔNG TIN BOT",
+        f"🤖 **Tên:** {bot.user}\n"
+        f"🆔 **ID:** `{bot.user.id}`\n"
+        f"📡 **Ping:** `{round(bot.latency * 1000)}ms`\n"
+        f"⏱️ **Uptime:** `{uptime_string()}`\n\n"
+        f"🏠 **Số server:** `{len(bot.guilds)}`\n"
+        f"👥 **Tổng thành viên:** `{sum(g.member_count or 0 for g in bot.guilds):,}`\n\n"
+        f"🐍 **Python:** `{pyver}`\n"
+        f"📚 **discord.py:** `{discord.__version__}`\n\n"
+        f"👑 **Owner:** <@{OWNER_ID}>"
+    )
+    await ctx.reply(embed=e)
+
+# ---------------- ECONOMY ----------------
+
+@bot.command()
+async def balance(ctx, member: discord.Member | None = None):
+    member = member or ctx.author
+    await ctx.reply(embed=embed("💰 Số dư Lune", f"{member.mention} đang có **{money(balance(member.id))}**."))
+
+@bot.command(aliases=["bal"])
+async def xu(ctx, member: discord.Member | None = None):
+    await balance(ctx, member)
+
+@bot.command()
+@commands.cooldown(1, 86400, commands.BucketType.user)
+async def daily(ctx):
+    amount = random.randint(250, 500)
+    add_balance(ctx.author.id, amount)
+    await ctx.reply(f"🌙 {ctx.author.mention} nhận **{money(amount)}** từ daily!")
+
+@bot.command()
+@commands.cooldown(1, 3600, commands.BucketType.user)
+async def work(ctx):
+    amount = random.randint(80, 220)
+    add_balance(ctx.author.id, amount)
+    jobs = ["phục vụ quán", "làm nhiệm vụ", "thiết kế", "săn kho báu"]
+    await ctx.reply(f"💼 {ctx.author.mention} vừa **{random.choice(jobs)}** và nhận **{money(amount)}**.")
+
+@bot.command(aliases=["give"])
+async def pay(ctx, member: discord.Member, amount: int):
+    if member.bot or member.id == ctx.author.id:
+        return await ctx.reply("❌ Không thể chuyển xu cho tài khoản này.")
+    if amount <= 0:
+        return await ctx.reply("❌ Số xu phải lớn hơn 0.")
+    if not take_balance(ctx.author.id, amount):
+        return await ctx.reply("❌ Bạn không đủ xu.")
+    add_balance(member.id, amount)
+    await ctx.reply(f"💸 {ctx.author.mention} đã chuyển **{money(amount)}** cho {member.mention}.")
+
+# ---------------- SHOP (PER SERVER) ----------------
+
+@bot.command()
+async def shop(ctx):
+    rows = db.execute(
+        "SELECT item_id,name,price,description,stock FROM shops WHERE guild_id=? ORDER BY item_id",
+        (ctx.guild.id,),
+    ).fetchall()
+    if not rows:
+        return await ctx.reply("🛒 Shop server này chưa có vật phẩm.")
+    lines = []
+    for r in rows:
+        stock = "∞" if r["stock"] < 0 else str(r["stock"])
+        lines.append(f"**#{r['item_id']} • {r['name']}** — {money(r['price'])} • Kho: `{stock}`\n{r['description']}")
+    await ctx.reply(embed=embed(f"🛒 SHOP • {ctx.guild.name}", "\n\n".join(lines)))
+
+@bot.command()
+@admin_only()
+async def setshop(ctx, *, data: str):
+    parts = [p.strip() for p in data.split("|", 2)]
+    if len(parts) < 2:
+        return await ctx.reply("Cú pháp: `l!setshop Tên | Giá | Mô tả`")
+    name = parts[0]
+    try:
+        price = int(parts[1])
+    except ValueError:
+        return await ctx.reply("❌ Giá phải là số.")
+    desc = parts[2] if len(parts) == 3 else ""
+    if price < 0:
+        return await ctx.reply("❌ Giá không được âm.")
+    db.execute("INSERT INTO shops(guild_id,name,price,description) VALUES(?,?,?,?)",
+               (ctx.guild.id, name[:80], price, desc[:300]))
+    db.commit()
+    await ctx.reply(f"✅ Đã thêm **{name}** vào shop server này.")
+
+@bot.command()
+@admin_only()
+async def editshop(ctx, item_id: int, price: int):
+    if price < 0:
+        return await ctx.reply("❌ Giá không được âm.")
+    cur = db.execute("UPDATE shops SET price=? WHERE item_id=? AND guild_id=?",
+                     (price, item_id, ctx.guild.id))
+    db.commit()
+    await ctx.reply("✅ Đã sửa giá." if cur.rowcount else "❌ Không tìm thấy vật phẩm.")
+
+@bot.command()
+@admin_only()
+async def delshop(ctx, item_id: int):
+    cur = db.execute("DELETE FROM shops WHERE item_id=? AND guild_id=?", (item_id, ctx.guild.id))
+    db.commit()
+    await ctx.reply("✅ Đã xoá vật phẩm." if cur.rowcount else "❌ Không tìm thấy vật phẩm.")
+
+@bot.command()
+@admin_only()
+async def clearshop(ctx):
+    db.execute("DELETE FROM shops WHERE guild_id=?", (ctx.guild.id,))
+    db.commit()
+    await ctx.reply("🧹 Đã xoá toàn bộ shop của server.")
+
+@bot.command()
+async def buy(ctx, item_id: int, quantity: int = 1):
+    if quantity <= 0 or quantity > 99:
+        return await ctx.reply("❌ Số lượng phải từ 1 đến 99.")
+    row = db.execute("SELECT * FROM shops WHERE item_id=? AND guild_id=?",
+                     (item_id, ctx.guild.id)).fetchone()
+    if not row:
+        return await ctx.reply("❌ Không tìm thấy vật phẩm trong shop server này.")
+    if row["stock"] >= 0 and row["stock"] < quantity:
+        return await ctx.reply("❌ Shop không đủ hàng.")
+    total = row["price"] * quantity
+    if not take_balance(ctx.author.id, total):
+        return await ctx.reply(f"❌ Bạn cần **{money(total)}**.")
+    db.execute("""
+        INSERT INTO inventory(user_id,guild_id,item_id,quantity) VALUES(?,?,?,?)
+        ON CONFLICT(user_id,guild_id,item_id) DO UPDATE SET quantity=quantity+excluded.quantity
+    """, (ctx.author.id, ctx.guild.id, item_id, quantity))
+    if row["stock"] >= 0:
+        db.execute("UPDATE shops SET stock=stock-? WHERE item_id=?", (quantity, item_id))
+    db.commit()
+    await ctx.reply(f"🛍️ Đã mua **{row['name']} x{quantity}** với **{money(total)}**.")
+
+@bot.command()
+async def inventory(ctx, member: discord.Member | None = None):
+    member = member or ctx.author
+    rows = db.execute("""
+        SELECT s.name, i.quantity FROM inventory i
+        JOIN shops s ON s.item_id=i.item_id
+        WHERE i.user_id=? AND i.guild_id=? AND i.quantity>0
+    """, (member.id, ctx.guild.id)).fetchall()
+    if not rows:
+        return await ctx.reply("🎒 Túi đồ đang trống.")
+    await ctx.reply(embed=embed("🎒 Túi đồ", "\n".join(f"• {r['name']} × `{r['quantity']}`" for r in rows)))
+
+# ---------------- GAMES ----------------
+
+def valid_bet(amount):
+    return isinstance(amount, int) and 1 <= amount <= 1_000_000
+
+@bot.command()
+async def rps(ctx, choice: str, bet: int):
+    if choice.lower() not in ("búa", "bua", "kéo", "keo", "bao"):
+        return await ctx.reply("❌ Chọn `búa`, `kéo` hoặc `bao`.")
+    if not valid_bet(bet) or not take_balance(ctx.author.id, bet):
+        return await ctx.reply("❌ Cược không hợp lệ hoặc không đủ xu.")
+    user = {"bua":"búa", "búa":"búa", "keo":"kéo", "kéo":"kéo", "bao":"bao"}[choice.lower()]
+    botc = random.choice(["búa", "kéo", "bao"])
+    win = (user, botc) in [("búa","kéo"),("kéo","bao"),("bao","búa")]
+    if user == botc:
+        add_balance(ctx.author.id, bet)
+        result = f"🤝 Hoà! Bạn nhận lại {money(bet)}."
+    elif win:
+        add_balance(ctx.author.id, bet * 2)
+        result = f"🎉 Thắng! Nhận {money(bet*2)}."
+    else:
+        result = f"💸 Thua {money(bet)}."
+    await ctx.reply(f"🪨📄✂️ Bạn: **{user}** | Luna: **{botc}**\n{result}")
+
+@bot.command()
+async def dice(ctx, count: int, bet: int):
+    if count < 1 or count > 6:
+        return await ctx.reply("❌ Số xúc xắc từ 1 đến 6. Mỗi xúc xắc có 6 mặt.")
+    if not valid_bet(bet) or not take_balance(ctx.author.id, bet):
+        return await ctx.reply("❌ Cược không hợp lệ hoặc không đủ xu.")
+    rolls = [random.randint(1, 6) for _ in range(count)]
+    total = sum(rolls)
+    # Thưởng theo tổng tương đối với số xúc xắc.
+    if total == count * 6:
+        multiplier = 3
+    elif total >= count * 4:
+        multiplier = 2
+    else:
+        multiplier = 0
+    if multiplier:
+        add_balance(ctx.author.id, bet * multiplier)
+        result = f"🎉 Nhận **{money(bet*multiplier)}**."
+    else:
+        result = f"💸 Mất **{money(bet)}**."
+    await ctx.reply(f"🎲 Kết quả: **{' • '.join(map(str, rolls))}** | Tổng: **{total}**\n{result}")
+
+@bot.command()
+async def baucua(ctx, choice: str, bet: int):
+    faces = ["bầu","cua","tôm","cá","gà","nai"]
+    aliases = {"bau":"bầu","bầu":"bầu","cua":"cua","tom":"tôm","tôm":"tôm","ca":"cá","cá":"cá","ga":"gà","gà":"gà","nai":"nai"}
+    c = aliases.get(choice.lower())
+    if not c or not valid_bet(bet) or not take_balance(ctx.author.id, bet):
+        return await ctx.reply("❌ Cú pháp: `l!baucua <bầu|cua|tôm|cá|gà|nai> <cược>` và phải đủ xu.")
+    rolls = [random.choice(faces) for _ in range(3)]
+    hits = rolls.count(c)
+    payout = bet * hits
+    if hits:
+        add_balance(ctx.author.id, bet + payout)
+        result = f"🎉 Ra **{hits} {c}** — nhận tổng **{money(bet+payout)}**."
+    else:
+        result = f"💸 Không trúng — mất **{money(bet)}**."
+    await ctx.reply(f"🎲 {', '.join(rolls)}\n{result}")
+
+@bot.command()
+async def doan(ctx, number: int, bet: int):
+    if not 1 <= number <= 100 or not valid_bet(bet) or not take_balance(ctx.author.id, bet):
+        return await ctx.reply("❌ Số đoán từ 1–100 và cược hợp lệ.")
+    target = random.randint(1, 100)
+    if number == target:
+        add_balance(ctx.author.id, bet * 5)
+        result = f"🎯 Chính xác! Nhận **{money(bet*5)}**."
+    else:
+        result = f"🔢 Số đúng là **{target}**. {money(bet)} đã được dùng cho lượt chơi."
+    await ctx.reply(result)
+
+@bot.command(aliases=["redblack"])
+async def doando(ctx, color: str, bet: int):
+    c = color.lower()
+    if c not in ("đỏ","do","đen","den") or not valid_bet(bet) or not take_balance(ctx.author.id, bet):
+        return await ctx.reply("❌ Chọn `đỏ` hoặc `đen` và nhập cược hợp lệ.")
+    actual = random.choice(["đỏ","đen"])
+    if ("đỏ" if c in ("đỏ","do") else "đen") == actual:
+        add_balance(ctx.author.id, bet * 2)
+        result = f"🎉 Ra **{actual}** — nhận **{money(bet*2)}**."
+    else:
+        result = f"💸 Ra **{actual}** — mất **{money(bet)}**."
+    await ctx.reply(result)
+
+# ---------------- SETL ----------------
+
+DEFAULT_LOVE = "🌙 Một chút dịu dàng, một chút đáng yêu — Luna gửi tới bạn."
+
+@bot.command()
+@admin_only()
+async def setlove(ctx, *, content: str):
+    db.execute("""
+        INSERT INTO loves(guild_id,content) VALUES(?,?)
+        ON CONFLICT(guild_id) DO UPDATE SET content=excluded.content
+    """, (ctx.guild.id, content[:1000]))
+    db.commit()
+    await ctx.reply("💗 Đã cập nhật nội dung SETL cho server.")
+
+def get_love(guild_id):
+    row = db.execute("SELECT content FROM loves WHERE guild_id=?", (guild_id,)).fetchone()
+    return row["content"] if row else DEFAULT_LOVE
+
+@bot.command()
+async def love(ctx, member: discord.Member | None = None):
+    member = member or ctx.author
+    await ctx.reply(f"💗 **SETL**\n{get_love(ctx.guild.id)}\n\n{ctx.author.mention} → {member.mention}")
+
+async def action(ctx, verb, member):
+    member = member or ctx.author
+    if member.bot:
+        return await ctx.reply("🤖 Không thực hiện tương tác này với bot.")
+    await ctx.reply(f"💗 {ctx.author.mention} **{verb}** {member.mention}")
+
+@bot.command()
+async def hon(ctx, member: discord.Member):
+    await action(ctx, "hôn", member)
+
+@bot.command()
+async def xoadau(ctx, member: discord.Member):
+    await action(ctx, "xoa đầu", member)
+
+@bot.command()
+async def tat(ctx, member: discord.Member):
+    await action(ctx, "tát", member)
+
+@bot.command()
+async def om(ctx, member: discord.Member):
+    await action(ctx, "ôm", member)
+
+@bot.command()
+async def be(ctx, member: discord.Member):
+    await action(ctx, "bế", member)
+
+@bot.command()
+async def can(ctx, member: discord.Member):
+    await action(ctx, "cắn", member)
+
+@bot.command()
+async def kethon(ctx, member: discord.Member):
+    if member.id == ctx.author.id:
+        return await ctx.reply("❌ Không thể kết hôn với chính mình.")
+    pair = tuple(sorted((ctx.author.id, member.id)))
+    db.execute("INSERT OR IGNORE INTO marriages(user1,user2,guild_id,created_at) VALUES(?,?,?,?)",
+               (pair[0], pair[1], ctx.guild.id, int(time.time())))
+    db.commit()
+    await ctx.reply(f"💍 {ctx.author.mention} và {member.mention} đã kết hôn trong Luna v2!")
+
+@bot.command()
+async def lyhon(ctx, member: discord.Member):
+    pair = tuple(sorted((ctx.author.id, member.id)))
+    cur = db.execute("DELETE FROM marriages WHERE user1=? AND user2=? AND guild_id=?",
+                     (pair[0], pair[1], ctx.guild.id))
+    db.commit()
+    await ctx.reply("💔 Đã ly hôn." if cur.rowcount else "❌ Hai người chưa có hôn thú trong Luna.")
+
+# ---------------- WARNING / MODERATION ----------------
+
+async def do_warn(ctx, member, reason):
+    if member.bot or member.id == ctx.author.id:
+        return await ctx.reply("❌ Không thể cảnh cáo tài khoản này.")
+    row = db.execute("SELECT count FROM warnings WHERE guild_id=? AND user_id=?",
+                     (ctx.guild.id, member.id)).fetchone()
+    count = (row["count"] if row else 0) + 1
+    db.execute("""
+        INSERT INTO warnings(guild_id,user_id,count) VALUES(?,?,?)
+        ON CONFLICT(guild_id,user_id) DO UPDATE SET count=excluded.count
+    """, (ctx.guild.id, member.id, count))
+    db.execute("INSERT INTO warn_logs(guild_id,user_id,moderator_id,reason,created_at) VALUES(?,?,?,?,?)",
+               (ctx.guild.id, member.id, ctx.author.id, reason, int(time.time())))
+    db.commit()
+    await ctx.reply(f"⚠️ {member.mention} nhận cảnh cáo **#{count}**.\nLý do: {reason}")
+
+@bot.command()
+@admin_only()
+async def warn(ctx, member: discord.Member, *, reason="Không nêu lý do"):
+    await do_warn(ctx, member, reason)
+
+@bot.command()
+@admin_only()
+async def warnings(ctx, member: discord.Member):
+    row = db.execute("SELECT count FROM warnings WHERE guild_id=? AND user_id=?",
+                     (ctx.guild.id, member.id)).fetchone()
+    count = row["count"] if row else 0
+    logs = db.execute("""
+        SELECT reason,created_at FROM warn_logs
+        WHERE guild_id=? AND user_id=? ORDER BY id DESC LIMIT 5
+    """, (ctx.guild.id, member.id)).fetchall()
+    text = f"⚠️ {member.mention}: **{count}** cảnh cáo."
+    if logs:
+        text += "\n" + "\n".join(f"• <t:{r['created_at']}:R> — {r['reason']}" for r in logs)
+    await ctx.reply(embed=embed("⚠️ Lịch sử cảnh cáo", text))
+
+@bot.command()
+@admin_only()
+async def clearwarn(ctx, member: discord.Member):
+    db.execute("DELETE FROM warnings WHERE guild_id=? AND user_id=?", (ctx.guild.id, member.id))
+    db.execute("DELETE FROM warn_logs WHERE guild_id=? AND user_id=?", (ctx.guild.id, member.id))
+    db.commit()
+    await ctx.reply(f"✅ Đã xoá cảnh cáo của {member.mention}.")
+
+@bot.command()
+@admin_only()
+async def kick(ctx, member: discord.Member, *, reason="Không nêu lý do"):
+    if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
+        return await ctx.reply("❌ Không thể kick thành viên có role ngang/cao hơn bạn.")
+    await member.kick(reason=reason)
+    await ctx.reply(f"👢 Đã kick {member.mention}.")
+
+@bot.command()
+@admin_only()
+async def ban(ctx, member: discord.Member, *, reason="Không nêu lý do"):
+    if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
+        return await ctx.reply("❌ Không thể ban thành viên có role ngang/cao hơn bạn.")
+    await member.ban(reason=reason)
+    await ctx.reply(f"🔨 Đã ban {member.mention}.")
+
+@bot.command()
+@admin_only()
+async def mute(ctx, member: discord.Member, minutes: int, *, reason="Không nêu lý do"):
+    if minutes < 1 or minutes > 10080:
+        return await ctx.reply("❌ Thời gian từ 1 đến 10080 phút.")
+    until = discord.utils.utcnow() + timedelta(minutes=minutes)
+    await member.timeout(until, reason=reason)
+    await ctx.reply(f"🔇 Đã timeout {member.mention} trong **{minutes} phút**.")
+
+# ---------------- GIVEAWAY ----------------
+
+giveaways = {}
+giveaway_counter = 0
+
+class GiveawayView(discord.ui.View):
+    def __init__(self, gid):
+        super().__init__(timeout=None)
+        self.gid = gid
+
+    @discord.ui.button(label="Tham gia", emoji="🎉", style=discord.ButtonStyle.success)
+    async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        g = giveaways.get(self.gid)
+        if not g or g["ended"]:
+            return await interaction.response.send_message("❌ Giveaway đã kết thúc.", ephemeral=True)
+        g["users"].add(interaction.user.id)
+        await interaction.response.send_message("🎉 Đã tham gia giveaway!", ephemeral=True)
+
+@bot.command()
+@admin_only()
+async def giveaway(ctx, minutes: int, *, prize: str):
+    global giveaway_counter
+    if minutes < 1 or minutes > 10080:
+        return await ctx.reply("❌ Thời gian từ 1 đến 10080 phút.")
+    giveaway_counter += 1
+    gid = giveaway_counter
+    end_at = time.time() + minutes * 60
+    giveaways[gid] = {"guild": ctx.guild.id, "channel": ctx.channel.id, "prize": prize,
+                      "users": set(), "ended": False, "message": None}
+    e = embed("🎁 GIVEAWAY", f"🎁 Phần thưởng: **{prize}**\n⏳ Kết thúc: <t:{int(end_at)}:R>\n\nNhấn **Tham gia** để tham gia!")
+    msg = await ctx.send(embed=e, view=GiveawayView(gid))
+    giveaways[gid]["message"] = msg.id
+    await asyncio.sleep(minutes * 60)
+    await end_giveaway(gid)
+
+async def end_giveaway(gid):
+    g = giveaways.get(gid)
+    if not g or g["ended"]:
+        return
+    g["ended"] = True
+    channel = bot.get_channel(g["channel"])
+    if not channel:
+        return
+    users = list(g["users"])
+    if users:
+        winner = random.choice(users)
+        await channel.send(f"🎉 Chúc mừng <@{winner}> đã thắng giveaway **{g['prize']}**!")
+    else:
+        await channel.send("🎁 Giveaway kết thúc nhưng không có người tham gia.")
+
+@bot.command()
+@admin_only()
+async def gend(ctx):
+    active = [gid for gid, g in giveaways.items() if g["guild"] == ctx.guild.id and not g["ended"]]
+    if not active:
+        return await ctx.reply("❌ Không có giveaway đang mở.")
+    await end_giveaway(active[-1])
+    await ctx.reply("✅ Đã kết thúc giveaway gần nhất.")
+
+@bot.command()
+async def gjoin(ctx):
+    active = [gid for gid, g in giveaways.items() if g["guild"] == ctx.guild.id and not g["ended"]]
+    if not active:
+        return await ctx.reply("❌ Không có giveaway đang mở.")
+    giveaways[active[-1]]["users"].add(ctx.author.id)
+    await ctx.reply("🎉 Đã tham gia giveaway!")
+
+# ---------------- ADMIN / OWNER ----------------
+
+@bot.command()
+@admin_only()
+async def setlog(ctx, channel: discord.TextChannel):
+    # Reserved for future persistent log setting.
+    await ctx.reply(f"✅ Kênh log được đặt thành {channel.mention}.")
+
+@bot.command()
+@owner_only()
+async def servers(ctx):
+    lines = [f"• `{g.id}` — {g.name} — {g.member_count or 0} thành viên" for g in bot.guilds]
+    await ctx.reply(embed=embed("👑 Server của Luna", "\n".join(lines)[:4000] or "Không có server."))
+
+@bot.command()
+@owner_only()
+async def say(ctx, *, content: str):
+    await ctx.message.delete()
+    await ctx.send(content)
+
+@bot.command()
+@owner_only()
+async def sync(ctx):
+    synced = await bot.tree.sync()
+    await ctx.reply(f"✅ Đã sync **{len(synced)}** slash commands.")
+
+@bot.command()
+@owner_only()
+async def shutdown(ctx):
+    await ctx.reply("🌙 Luna v2 đang tắt...")
+    await bot.close()
+
+# ---------------- RUN ----------------
+
+bot.started_at = time.monotonic()
 bot.run(TOKEN)

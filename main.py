@@ -355,8 +355,7 @@ await ctx.reply(
     embed=embed(
         "💰 Số dư Lune",
         f"{member.mention} đang có **{amount:,} xu**."
-    )
-)
+
 @bot.command()
 @commands.cooldown(1, 86400, commands.BucketType.user)
 async def daily(ctx):

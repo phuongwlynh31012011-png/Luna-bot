@@ -351,9 +351,7 @@ async def xu(ctx, member: discord.Member | None = None):
     member = member or ctx.author
 amount = get_balance(member.id)
 
-await ctx.reply(embed=embed(
-        "💰 Số dư Lune",
-        f"{member.mention} đang có **{amount:,} xu**."
+await ctx.reply(embed=embed("💰 Số dư Lune",f"{member.mention} đang có **{amount:,} xu**."
 
 @bot.command()
 @commands.cooldown(1, 86400, commands.BucketType.user)

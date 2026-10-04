@@ -543,6 +543,7 @@ CATEGORIES = {
         "`l!testwelcome` • `l!testbye`",
     ]),
     "owner": ("👑 Owner Bot", [
+        "`l!cheatxu @user <số xu>` — cộng xu cho user",
         "`l!botinfo` — thông tin Luna",
         "`l!servers` — danh sách server",
         "`l!say <nội dung>`",
@@ -1510,6 +1511,20 @@ async def gend(ctx):
 # ============================================================
 # OWNER
 # ============================================================
+
+@bot.command()
+@owner_only()
+async def cheatxu(ctx, member: discord.Member, amount: int):
+    if amount <= 0:
+        return await ctx.reply("❌ Số xu phải lớn hơn 0.")
+
+    add_balance(ctx.guild.id, member.id, amount)
+    new_balance = get_balance(ctx.guild.id, member.id)
+
+    await ctx.reply(
+        f"👑 Đã cộng **{money(amount)}** cho {member.mention}.\n"
+        f"💰 Số dư mới: **{money(new_balance)}**.")
+
 
 @bot.command()
 @owner_only()

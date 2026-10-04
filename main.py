@@ -1349,6 +1349,77 @@ async def testbye(ctx):
     await ctx.reply(content=content, embed=e)
 
 # ============================================================
+# ROLE MANAGEMENT
+# ============================================================
+
+@bot.command(name="role")
+@admin_only()
+async def role(ctx, member: discord.Member, role: discord.Role):
+    """Thêm role: l!role @user @role"""
+    if role.is_default():
+        return await ctx.reply("❌ Không thể thêm role @everyone.")
+
+    if role.managed:
+        return await ctx.reply("❌ Không thể quản lý role tích hợp/bot.")
+
+    if role >= ctx.guild.me.top_role:
+        return await ctx.reply("❌ Role của bot phải cao hơn role cần thêm.")
+
+    if role in member.roles:
+        return await ctx.reply(
+            f"❌ {member.mention} đã có {role.mention} rồi."
+        )
+
+    try:
+        await member.add_roles(
+            role,
+            reason=f"Luna role add by {ctx.author}"
+        )
+        await ctx.reply(
+            f"➕ Đã thêm {role.mention} cho {member.mention}."
+        )
+
+    except discord.Forbidden:
+        await ctx.reply("❌ Luna không có quyền quản lý role này.")
+
+    except discord.HTTPException:
+        await ctx.reply("❌ Discord từ chối thao tác role, thử lại sau.")
+
+
+@bot.command(name="unrole")
+@admin_only()
+async def unrole(ctx, member: discord.Member, role: discord.Role):
+    """Gỡ role: l!unrole @user @role"""
+    if role.is_default():
+        return await ctx.reply("❌ Không thể gỡ role @everyone.")
+
+    if role.managed:
+        return await ctx.reply("❌ Không thể quản lý role tích hợp/bot.")
+
+    if role >= ctx.guild.me.top_role:
+        return await ctx.reply("❌ Role của bot phải cao hơn role cần gỡ.")
+
+    if role not in member.roles:
+        return await ctx.reply(
+            f"❌ {member.mention} không có {role.mention}."
+        )
+
+    try:
+        await member.remove_roles(
+            role,
+            reason=f"Luna role remove by {ctx.author}"
+        )
+        await ctx.reply(
+            f"➖ Đã gỡ {role.mention} khỏi {member.mention}."
+        )
+
+    except discord.Forbidden:
+        await ctx.reply("❌ Luna không có quyền quản lý role này.")
+
+    except discord.HTTPException:
+        await ctx.reply("❌ Discord từ chối thao tác role, thử lại sau.")
+
+# ============================================================
 # GIVEAWAY — PERSISTENT ACROSS RESTARTS
 # ============================================================
 

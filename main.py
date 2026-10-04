@@ -959,7 +959,7 @@ async def level(ctx, member: discord.Member | None = None):
     await ctx.reply(embed=embed("✨ LEVEL", f"{member.mention}\nLevel: **{row['level']}**\nXP: **{row['xp']} / {needed}**"))
 
 
-@bot.command(aliases=["rank"])
+@bot.command()
 async def rank(ctx, member: discord.Member | None = None):
     member = member or ctx.author
     ensure_user(ctx.guild.id, member.id)

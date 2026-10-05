@@ -131,6 +131,15 @@ def db_init():
             user_id INTEGER NOT NULL,
             PRIMARY KEY (giveaway_id, user_id)
         );
+
+        CREATE TABLE IF NOT EXISTS marriages (
+    user1 INTEGER NOT NULL,
+    user2 INTEGER NOT NULL,
+    guild_id INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    intimacy INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user1, user2, guild_id)
+        );
     """)
 
     db.commit()
@@ -148,10 +157,68 @@ def db_migrate():
     db.commit()
 
 db_migrate()
-
+        
 # ============================================================
 # HELPERS
 # ============================================================
+
+
+MAX_INTIMACY = 20000
+
+def get_love_level(intimacy):
+    if intimacy >= 15000:
+        return "💍 Định mệnh"
+    elif intimacy >= 5000:
+        return "💞 Tâm đầu ý hợp"
+    elif intimacy >= 1000:
+        return "💗 Thân thiết"
+    else:
+        return "🌱 Mới quen"
+
+def add_intimacy(guild_id, user1, user2, amount):
+    pair = tuple(sorted((user1, user2)))
+
+    row = db.execute(
+        """
+        SELECT intimacy
+        FROM marriages
+        WHERE guild_id = ?
+        AND user1 = ?
+        AND user2 = ?
+        """,
+        (guild_id, pair[0], pair[1])
+    ).fetchone()
+
+    # Chưa kết hôn → không cộng điểm
+    if row is None:
+        return None
+
+    current = row[0]
+
+    new_intimacy = min(
+        current + amount,
+        MAX_INTIMACY
+    )
+
+    db.execute(
+        """
+        UPDATE marriages
+        SET intimacy = ?
+        WHERE guild_id = ?
+        AND user1 = ?
+        AND user2 = ?
+        """,
+        (
+            new_intimacy,
+            guild_id,
+            pair[0],
+            pair[1]
+        )
+    )
+
+    db.commit()
+
+    return new_intimacy
 
 
 def embed(title: str, description: str = "", color: discord.Color = discord.Color.blurple()):
@@ -980,123 +1047,342 @@ async def love(ctx, member: discord.Member):
     if member.id == ctx.author.id:
         replies = [
             "❌💗 Tự yêu mình thì tốt... nhưng Luna đang chờ bạn chỉ mặt ai cơ 😭",
-            "❌🌙 Hết người để love rồi hả? Tự love mình luôn à 🥺",
-            "❌👀 Tự yêu bản thân là tốt, nhưng Luna thấy hơi cô đơn đó nha.",
-            "❌💞 Người ta có đôi có cặp, còn bạn đang tự love chính mình 😭",
-            "❌🌙 Luna biết bạn đáng yêu, nhưng tự tỏ tình với mình thì hơi lạ nha 🤭",
+            "❌🌙 Hết người để love rồi hả? 🤭",
+            "❌👀 Tự tỏ tình với mình luôn à? Luna chịu rồi đó 😭",
         ]
         return await ctx.reply(random.choice(replies))
 
     if member.bot:
         replies = [
-            f"🤖💗 {ctx.author.mention} hết người để yêu rồi hay sao mà quay sang love bot vậy 😭",
-            f"🌙👀 Ơ kìa {ctx.author.mention}, ế đến mức yêu bot luôn hả?",
-            f"💗🤖 Luna chỉ là bot thôi mà {ctx.author.mention} cũng không tha nữa 😭",
-            f"🥺🌙 {ctx.author.mention} tỏ tình với bot công khai luôn kìa...",
-            f"🤖💘 Luna ghi nhận tình cảm của {ctx.author.mention}, nhưng đơn này hơi khó duyệt nha 😭",
+            "🤖💗 Hết người để yêu rồi hay sao mà quay sang love bot vậy 😭",
+            "🌙👀 Ơ kìa, ế đến mức yêu bot luôn hả?",
+            "🤖💘 Luna ghi nhận tín hiệu tình cảm này nha 🤭",
         ]
         return await ctx.reply(random.choice(replies))
 
     replies = [
-        f"💘🌙 {ctx.author.mention} vừa công khai tình cảm với {member.mention} rồi nha 👀",
-        f"💗✨ Ơ kìa, {ctx.author.mention} đang để ý {member.mention} đúng không? 😭",
-        f"🌙👀 Có người vừa thả tình yêu cho {member.mention} kìa...",
-        f"💞🌙 {ctx.author.mention} → {member.mention}: Luna đã ghi nhận tín hiệu tình yêu 💘",
-        f"🥺💗 {ctx.author.mention} mạnh dạn love {member.mention} luôn cơ à? Gan vậy ta.",
-        f"🌙💘 {member.mention} ơi, có người vừa gọi tên bạn bằng tình yêu đó nha 👀",
-        f"💗🫣 Luna vừa bắt gặp {ctx.author.mention} đang tỏ tình với {member.mention} rồi nha.",
-        f"🌙💕 Một tín hiệu tình yêu vừa được gửi từ {ctx.author.mention} đến {member.mention}.",
-        f"👀💘 Luna không nói gì đâu... nhưng {ctx.author.mention} vừa love {member.mention} đó nha 🤭",
-        f"💞✨ Hình như có người rung động với {member.mention} rồi thì phải...",
+        f"💘🌙 {ctx.author.mention} vừa bày tỏ tình cảm với {member.mention} rồi nha 👀",
+        f"💗✨ {ctx.author.mention} đang có ý với {member.mention} đúng không? 🤭",
+        f"🌙💞 Tín hiệu tình cảm từ {ctx.author.mention} đã được gửi đến {member.mention}.",
+        f"👀💘 Luna vừa phát hiện {ctx.author.mention} đang để ý {member.mention}.",
+    ]
+
+    return await ctx.reply(random.choice(replies))
+
+@bot.command()
+@bot.command()
+async def hon(ctx, member: discord.Member):
+
+    if member.id == ctx.author.id:
+        return await ctx.reply(
+            "❌💋 Tự hôn mình thì hơi cô đơn đó nha 😭"
+        )
+
+    if member.bot:
+        return await ctx.reply(
+            "🤖💋 Hôn Luna á? Gan vậy trời 😭"
+        )
+
+    add_intimacy(
+        ctx.guild.id,
+        ctx.author.id,
+        member.id,
+        70
+    )
+
+    replies = [
+        f"💋🌙 {ctx.author.mention} vừa hôn {member.mention} một cái nha 👀",
+        f"💗 {ctx.author.mention} lén hôn {member.mention} rồi kìa 🤭",
+        f"🌙💋 {member.mention} vừa nhận một nụ hôn từ {ctx.author.mention}.",
+    ]
+
+    return await ctx.reply(random.choice(replies))
+
+@bot.command()
+@bot.command()
+async def xoadau(ctx, member: discord.Member):
+
+    if member.id == ctx.author.id:
+        return await ctx.reply(
+            "❌🌙 Tự xoa đầu mình thì hơi cô đơn đó nha 😭"
+        )
+
+    if member.bot:
+        return await ctx.reply(
+            "🤖🌙 Xoa đầu Luna á? Nhẹ thôi nha 🤭"
+        )
+
+    add_intimacy(
+        ctx.guild.id,
+        ctx.author.id,
+        member.id,
+        40
+    )
+
+    replies = [
+        f"🌙💗 {ctx.author.mention} vừa xoa đầu {member.mention}.",
+        f"🥺✨ {ctx.author.mention} nhẹ nhàng xoa đầu {member.mention}.",
+        f"💗🌙 {member.mention} vừa được xoa đầu rồi nha.",
     ]
 
     return await ctx.reply(random.choice(replies))
 
 
 @bot.command()
-async def hon(ctx, member: discord.Member):
-    if member.id == ctx.author.id:
-        return await ctx.reply(
-            "❌ Người này không thể nhận nụ hôn đâu nha."
-        )
-        
-    if member.bot:
-        return await ctx.reply(
-            "❌s lại yêu bot thế này luna k đồng ý đâu"
-        )   
-
-    await ctx.reply(
-        f"💗 {ctx.author.mention} đã hôn {member.mention}."
-    )
-
-
-@bot.command()
-async def xoadau(ctx, member: discord.Member):
-    if member.id == ctx.author.id or member.bot:
-        return await ctx.reply("❌ Không thể xoa đầu tài khoản này.")
-
-    await ctx.reply(
-        f"🤍 {ctx.author.mention} đã xoa đầu {member.mention}."
-    )
-
-
-@bot.command()
 async def tat(ctx, member: discord.Member):
-    if member.id == ctx.author.id or member.bot:
-        return await ctx.reply("❌ Không thể dùng lệnh này với tài khoản này.")
 
-    await ctx.reply(
-        f"💢 {ctx.author.mention} đã tát nhẹ {member.mention}."
-    )
+    if member.id == ctx.author.id:
+        replies = [
+            "❌🌙 Tự tát mình thì Luna không cho nha 😭",
+            "❌💗 Bình tĩnh nào, đừng tự làm đau mình nha.",
+            "❌👀 Luna xin phép không duyệt màn tự tát này 😭",
+        ]
+        return await ctx.reply(random.choice(replies))
+
+    if member.bot:
+        replies = [
+            "🤖🌙 Tát Luna á? Gan vậy trời 😭",
+            "🤖👀 Luna ghi nhớ chuyện này nha...",
+            "🌙🥺 Luna có làm gì đâu mà bị tát vậy 😭",
+        ]
+        return await ctx.reply(random.choice(replies))
+
+    replies = [
+        f"👋🌙 {ctx.author.mention} vừa tát {member.mention} một cái.",
+        f"👀 {ctx.author.mention} vừa cho {member.mention} một cú tát nha.",
+        f"🌙💢 {member.mention} vừa bị {ctx.author.mention} tát rồi kìa 😭",
+        f"👋 Luna vừa chứng kiến {ctx.author.mention} tát {member.mention}.",
+    ]
+    return await ctx.reply(random.choice(replies))
 
 
 @bot.command()
 async def om(ctx, member: discord.Member):
-    if member.id == ctx.author.id or member.bot:
-        return await ctx.reply("❌ Không thể ôm tài khoản này.")
 
-    await ctx.reply(
-        f"🫂 {ctx.author.mention} đã ôm {member.mention}."
+    if member.id == ctx.author.id:
+        return await ctx.reply(
+            "❌🫂 Tự ôm mình thì hơi cô đơn đó nha 🥺"
+        )
+
+    if member.bot:
+        return await ctx.reply(
+            "🤖🫂 Luna nhận cái ôm này nha 🤭"
+        )
+
+    add_intimacy(
+        ctx.guild.id,
+        ctx.author.id,
+        member.id,
+        50
     )
 
+    replies = [
+        f"🫂🌙 {ctx.author.mention} vừa ôm {member.mention}.",
+        f"💗🫂 {ctx.author.mention} dành một cái ôm cho {member.mention}.",
+        f"🌙🥺 {member.mention} vừa được {ctx.author.mention} ôm một cái.",
+    ]
 
-@bot.command()
+    return await ctx.reply(random.choice(replies))
+
+
+@@bot.command()
 async def be(ctx, member: discord.Member):
-    if member.id == ctx.author.id or member.bot:
-        return await ctx.reply("❌ Không thể bế tài khoản này.")
 
-    await ctx.reply(
-        f"🫶 {ctx.author.mention} đã bế {member.mention}."
-    )
+    if member.id == ctx.author.id:
+        replies = [
+            "❌🌙 Tự bế mình thì Luna chịu rồi đó 😭",
+            "❌👀 Muốn được bế thì kiếm người khác nha 🤭",
+            "❌💗 Tự bế bản thân? Kỹ năng này Luna chưa học 😭",
+        ]
+        return await ctx.reply(random.choice(replies))
 
+    if member.bot:
+        replies = [
+            "🤖🌙 Luna nhỏ vậy mà cũng đòi bế hả 😭",
+            "🤖👀 Bế Luna á? Cẩn thận Luna trốn nha!",
+            "🌙💗 Luna ghi nhận lời đề nghị bế này 🤭",
+        ]
+        return await ctx.reply(random.choice(replies))
+
+    replies = [
+        f"🌙🫂 {ctx.author.mention} vừa bế {member.mention} lên.",
+        f"💗✨ {ctx.author.mention} hôm nay khỏe ghê, bế luôn {member.mention}.",
+        f"👀🌙 {member.mention} vừa được {ctx.author.mention} bế nha.",
+        f"🫂💗 Luna vừa bắt gặp {ctx.author.mention} đang bế {member.mention}.",
+    ]
+    return await ctx.reply(random.choice(replies))
 
 @bot.command()
 async def can(ctx, member: discord.Member):
-    if member.id == ctx.author.id or member.bot:
-        return await ctx.reply("❌ Không thể dùng lệnh này với tài khoản này.")
 
-    await ctx.reply(
-        f"😳 {ctx.author.mention} đã cắn nhẹ {member.mention}."
+    if member.id == ctx.author.id:
+        return await ctx.reply(
+            "❌🌙 Tự cắn mình thì hơi cô đơn đó nha 😭"
+        )
+
+    if member.bot:
+        return await ctx.reply(
+            "🤖🦷 Cắn Luna á? Gan vậy trời 😭"
+        )
+
+    add_intimacy(
+        ctx.guild.id,
+        ctx.author.id,
+        member.id,
+        30
     )
 
+    replies = [
+        f"😼🌙 {ctx.author.mention} vừa cắn {member.mention} một cái.",
+        f"🦷💗 {ctx.author.mention} bất ngờ cắn {member.mention} rồi kìa.",
+        f"👀🌙 {member.mention} vừa bị {ctx.author.mention} cắn nha 🤭",
+    ]
 
+    return await ctx.reply(random.choice(replies))
+    
 @bot.command()
 async def kethon(ctx, member: discord.Member):
-    if member.id == ctx.author.id or member.bot:
-        return await ctx.reply("❌ Không thể kết hôn với tài khoản này.")
-    pair = tuple(sorted((ctx.author.id, member.id)))
-    db.execute("INSERT OR IGNORE INTO marriages(user1,user2,guild_id,created_at) VALUES(?,?,?,?)", (pair[0],pair[1],ctx.guild.id,now_ts()))
-    db.commit()
-    await ctx.reply(f"💍 {ctx.author.mention} và {member.mention} đã đăng ký kết hôn trong Luna.")
 
+    if member.id == ctx.author.id:
+        return await ctx.reply(
+            "❌💍 Tự kết hôn với mình á? Luna không duyệt nha 😭"
+        )
+
+    if member.bot:
+        return await ctx.reply(
+            "❌🤖 Luna không thể kết hôn với bot nha."
+        )
+
+    pair = tuple(sorted((ctx.author.id, member.id)))
+
+    exists = db.execute(
+        """
+        SELECT 1
+        FROM marriages
+        WHERE guild_id = ?
+        AND user1 = ?
+        AND user2 = ?
+        """,
+        (ctx.guild.id, pair[0], pair[1])
+    ).fetchone()
+
+    if exists:
+        return await ctx.reply(
+            "💍🌙 Hai người đã kết hôn rồi mà 😭"
+        )
+
+    db.execute(
+        """
+        INSERT INTO marriages
+        (user1, user2, guild_id, created_at, intimacy)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            pair[0],
+            pair[1],
+            ctx.guild.id,
+            now_ts(),
+            0
+        )
+    )
+
+    db.commit()
+
+    replies = [
+        f"💍🌙 Chúc mừng {ctx.author.mention} và {member.mention} đã về chung một nhà!",
+        f"💐💍 {ctx.author.mention} × {member.mention} chính thức thành đôi rồi nha!",
+        f"💗✨ Luna xin chúc mừng cặp đôi {ctx.author.mention} và {member.mention}!",
+    ]
+
+    return await ctx.reply(random.choice(replies))
 
 @bot.command()
-async def lyhon(ctx, member: discord.Member):
-    pair = tuple(sorted((ctx.author.id, member.id)))
-    cur = db.execute("DELETE FROM marriages WHERE user1=? AND user2=? AND guild_id=?", (pair[0],pair[1],ctx.guild.id))
-    db.commit()
-    await ctx.reply("💔 Đã ly hôn." if cur.rowcount else "❌ Hai người chưa có hôn thú trong Luna.")
+async def marriage(ctx):
 
+    row = db.execute(
+        """
+        SELECT user1, user2, created_at, intimacy
+        FROM marriages
+        WHERE guild_id = ?
+        AND (user1 = ? OR user2 = ?)
+        """,
+        (
+            ctx.guild.id,
+            ctx.author.id,
+            ctx.author.id
+        )
+    ).fetchone()
+
+    if row is None:
+        return await ctx.reply(
+            "❌💍 Bạn chưa kết hôn với ai cả."
+        )
+
+    user1, user2, created_at, intimacy = row
+
+    partner_id = user2 if user1 == ctx.author.id else user1
+
+    date = time.strftime(
+        "%d/%m/%Y",
+        time.localtime(created_at)
+    )
+
+    level = get_love_level(intimacy)
+
+    await ctx.reply(
+        f"💍 **THÔNG TIN HÔN NHÂN**\n\n"
+        f"💗 Vợ/chồng: <@{partner_id}>\n"
+        f"📅 Ngày kết hôn: **{date}**\n"
+        f"💕 Điểm thân mật: **{intimacy:,}/20,000**\n"
+        f"✨ Cấp độ: **{level}**"
+    )
+
+@bot.command()
+async def lyhon(ctx):
+
+    row = db.execute(
+        """
+        SELECT user1, user2
+        FROM marriages
+        WHERE guild_id = ?
+        AND (user1 = ? OR user2 = ?)
+        """,
+        (
+            ctx.guild.id,
+            ctx.author.id,
+            ctx.author.id
+        )
+    ).fetchone()
+
+    if row is None:
+        return await ctx.reply(
+            "❌💔 Bạn đang độc thân mà, ly hôn với ai vậy? 😭"
+        )
+
+    user1, user2 = row
+
+    partner_id = user2 if user1 == ctx.author.id else user1
+
+    db.execute(
+        """
+        DELETE FROM marriages
+        WHERE guild_id = ?
+        AND user1 = ?
+        AND user2 = ?
+        """,
+        (
+            ctx.guild.id,
+            min(ctx.author.id, partner_id),
+            max(ctx.author.id, partner_id)
+        )
+    )
+
+    db.commit()
+
+    return await ctx.reply(
+        f"💔🌙 {ctx.author.mention} và <@{partner_id}> đã chính thức đường ai nấy đi..."
+    )
+    
 # ============================================================
 # MODERATION
 # ============================================================

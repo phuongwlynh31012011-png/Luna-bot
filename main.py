@@ -487,9 +487,9 @@ CATEGORIES = {
     "games": ("🎮 Trò chơi", [
         "`l!rps <búa|kéo|bao> <cược>`",
         "`l!dice <1-6> <cược>`",
-        "`l!baucua <mặt> <cược>`",
-        "`l!doan <1-100> <cược>`",
-        "`l!doando <đỏ|đen> <cược>`",
+        "`l!baucua <bầu|cua|tôm|cá|gà|nai> <cược>`",
+        "`l!doanso <1-100> <cược>`",
+        "`l!doden <đỏ|đen> <cược>`",
     ]),
     "social": ("💗 Social", [
         "`l!love [@user]` — xem SETL",
@@ -920,7 +920,7 @@ async def baucua(ctx, choice: str, bet: int):
 
 
 @bot.command()
-async def doan(ctx, number: int, bet: int):
+async def doanso(ctx, number: int, bet: int):
     if not 1 <= number <= 100 or not valid_bet(bet):
         return await ctx.reply("❌ Số đoán từ 1–100 và cược hợp lệ.")
     if not take_balance(ctx.guild.id, ctx.author.id, bet):
@@ -934,7 +934,7 @@ async def doan(ctx, number: int, bet: int):
 
 
 @bot.command(aliases=["redblack"])
-async def doando(ctx, color: str, bet: int):
+async def doden(ctx, color: str, bet: int):
     c = color.lower()
     if c not in ("đỏ","do","đen","den") or not valid_bet(bet):
         return await ctx.reply("❌ Chọn `đỏ` hoặc `đen` và cược hợp lệ.")

@@ -916,7 +916,6 @@ async def baucua(ctx, choice: str, bet: int):
         "gà":"gà",
         "nai":"nai"
     }
-    
     c = aliases.get(choice.lower())
     if not c or not valid_bet(bet) or not take_balance(ctx.guild.id, ctx.author.id, bet):
         return await ctx.reply("❌ Cú pháp: `l!baucua <bầu|cua|tôm|cá|gà|nai> <cược>`.")

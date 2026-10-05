@@ -976,36 +976,42 @@ def get_love(guild_id):
 
 @bot.command()
 async def love(ctx, member: discord.Member):
+
     if member.id == ctx.author.id:
         replies = [
-            "💗 Tự yêu mình thì tốt, nhưng gọi Luna ra làm gì? Có người thương rồi mà giấu đúng không 🙄",
-            "☾ Ơ kìa, tự yêu mình á? Hay đang ngại không dám gọi tên người thương vậy 🤭",
-            "🥺 Không sao, chưa có ai thì mình yêu mình trước cũng được á nha ",
-            "♡ Tự yêu mình thế này thì Luna biết trêu sao đây ta…",
-            "☾ Hôm nay tự nhiên yêu bản thân dữ vậy… có chuyện gì đáng ngờ không ta? 👀",
+            "❌💗 Tự yêu mình thì tốt... nhưng Luna đang chờ bạn chỉ mặt ai cơ 😭",
+            "❌🌙 Hết người để love rồi hả? Tự love mình luôn à 🥺",
+            "❌👀 Tự yêu bản thân là tốt, nhưng Luna thấy hơi cô đơn đó nha.",
+            "❌💞 Người ta có đôi có cặp, còn bạn đang tự love chính mình 😭",
+            "❌🌙 Luna biết bạn đáng yêu, nhưng tự tỏ tình với mình thì hơi lạ nha 🤭",
         ]
         return await ctx.reply(random.choice(replies))
 
     if member.bot:
         replies = [
-            "Yêu bot á? Luna xin phép không duyệt đơn này nha 😅",
-            "Ơ… tự nhiên tỏ tình với Luna vậy? Luna ngại đó nha 🤭",
-            "☾ Luna ghi nhận tình cảm này… còn đáp lại thế nào thì để Luna suy nghĩ 🤭",
-            "🌙 Ủa? Hết người để yêu rồi nên quay sang yêu bot hả? 🙄",
-            "☾ Tỏ tình với Luna á? Tiêu chuẩn tụt đến mức này rồi sao 🤣",
+            f"🤖💗 {ctx.author.mention} hết người để yêu rồi hay sao mà quay sang love bot vậy 😭",
+            f"🌙👀 Ơ kìa {ctx.author.mention}, ế đến mức yêu bot luôn hả?",
+            f"💗🤖 Luna chỉ là bot thôi mà {ctx.author.mention} cũng không tha nữa 😭",
+            f"🥺🌙 {ctx.author.mention} tỏ tình với bot công khai luôn kìa...",
+            f"🤖💘 Luna ghi nhận tình cảm của {ctx.author.mention}, nhưng đơn này hơi khó duyệt nha 😭",
         ]
         return await ctx.reply(random.choice(replies))
 
-        replies = [
-            f"💗 {ctx.author.mention} vừa thả một chút tình yêu về phía {member.mention}… ",
-            f"🌙 {ctx.author.mention} ơi, thích {member.mention} đến mức phải gọi Luna ra làm chứng luôn à? 🤭",
-            f"🌙 {ctx.author.mention} khai thật đi, thích {member.mention} lâu chưa? 👀",
-            f"♡ {member.mention}, Luna nghĩ bạn nên để ý {ctx.author.mention} một chút đó 🤭",
-            f"🌙 {member.mention} ơi, có người đang để ý bạn kìa — {ctx.author.mention} đó 🤭",
-            f"🌙 Ơ kìa {ctx.author.mention}, hôm nay lại tìm đến {member.mention cơ à? 🤭",
-            f"🌙 {ctx.author.mention} chọn {member.mention} nhanh thế, Luna còn chưa kịp hóng mà 🤭",
+    replies = [
+        f"💘🌙 {ctx.author.mention} vừa công khai tình cảm với {member.mention} rồi nha 👀",
+        f"💗✨ Ơ kìa, {ctx.author.mention} đang để ý {member.mention} đúng không? 😭",
+        f"🌙👀 Có người vừa thả tình yêu cho {member.mention} kìa...",
+        f"💞🌙 {ctx.author.mention} → {member.mention}: Luna đã ghi nhận tín hiệu tình yêu 💘",
+        f"🥺💗 {ctx.author.mention} mạnh dạn love {member.mention} luôn cơ à? Gan vậy ta.",
+        f"🌙💘 {member.mention} ơi, có người vừa gọi tên bạn bằng tình yêu đó nha 👀",
+        f"💗🫣 Luna vừa bắt gặp {ctx.author.mention} đang tỏ tình với {member.mention} rồi nha.",
+        f"🌙💕 Một tín hiệu tình yêu vừa được gửi từ {ctx.author.mention} đến {member.mention}.",
+        f"👀💘 Luna không nói gì đâu... nhưng {ctx.author.mention} vừa love {member.mention} đó nha 🤭",
+        f"💞✨ Hình như có người rung động với {member.mention} rồi thì phải...",
     ]
-        return await ctx.reply(random.choice(replies))
+
+    return await ctx.reply(random.choice(replies))
+
 
 @bot.command()
 async def hon(ctx, member: discord.Member):

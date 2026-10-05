@@ -984,7 +984,7 @@ async def love(ctx, member: discord.Member):
             "♡ Tự yêu mình thế này thì Luna biết trêu sao đây ta…",
             "☾ Hôm nay tự nhiên yêu bản thân dữ vậy… có chuyện gì đáng ngờ không ta? 👀",
         ]
-     await ctx.reply(random_reply(replies))
+     return await ctx.reply(random.choice(replies))
 
     if member.bot:
         replies = [
@@ -994,7 +994,7 @@ async def love(ctx, member: discord.Member):
             "🌙 Ủa? Hết người để yêu rồi nên quay sang yêu bot hả? 🙄",
             "☾ Tỏ tình với Luna á? Tiêu chuẩn tụt đến mức này rồi sao 🤣",
         ]
-    await ctx.reply(random_reply(replies))
+    return await ctx.reply(random.choice(replies))
 
         replies = [
             f"💗 {ctx.author.mention} vừa thả một chút tình yêu về phía {member.mention}… "
@@ -1005,7 +1005,7 @@ async def love(ctx, member: discord.Member):
             f"🌙 Ơ kìa {ctx.author.mention}, hôm nay lại tìm đến {member.mention cơ à? 🤭",
             f"🌙 {ctx.author.mention} chọn {member.mention} nhanh thế, Luna còn chưa kịp hóng mà 🤭",
     ]
-  await ctx.reply(random_reply(replies))
+  return await ctx.reply(random.choice(replies))
 
 @bot.command()
 async def hon(ctx, member: discord.Member):

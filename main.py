@@ -110,22 +110,8 @@ def db_init():
         CREATE TABLE IF NOT EXISTS guild_config (
             guild_id INTEGER PRIMARY KEY,
             prefix TEXT NOT NULL DEFAULT 'l!',
-            welcome_channel INTEGER,
-            goodbye_channel INTEGER,
             log_channel INTEGER,
-            autorole_id INTEGER,
-            welcome_text TEXT NOT NULL DEFAULT 'Giữa vô vàn nơi để dừng chân, thật vui vì hôm nay bạn đã ghé qua đây. ♡\n\nHãy cứ thoải mái trò chuyện, tìm người chơi cùng, bật mic khi muốn, hay đơn giản là ngồi chill một chút dưới ánh trăng. ☾\n\nMong rằng từ một người xa lạ, bạn sẽ tìm thấy những người khiến mỗi lần online đều trở nên đáng mong chờ. ✦',
-            goodbye_text TEXT NOT NULL DEFAULT '🌙 **{member_name}** đã rời khỏi **{server}**.\n\nCảm ơn bạn vì khoảng thời gian đã ở cùng mọi người. Hẹn gặp lại một ngày nào đó. ♡',
-            welcome_title TEXT NOT NULL DEFAULT '🌙 Chào mừng bạn đến với {server}.',
-            goodbye_title TEXT NOT NULL DEFAULT '🌙 Hẹn gặp lại {member_name}.',
-            welcome_image TEXT NOT NULL DEFAULT '',
-            goodbye_image TEXT NOT NULL DEFAULT '',
-            welcome_color INTEGER NOT NULL DEFAULT 0xB8D8FF,
-            goodbye_color INTEGER NOT NULL DEFAULT 0xB8D8FF,
-            welcome_role INTEGER,
-            goodbye_role INTEGER,
-            welcome_enabled INTEGER NOT NULL DEFAULT 1,
-            goodbye_enabled INTEGER NOT NULL DEFAULT 1,
+            autorole_id INTEGER, thật vui vì hôm nay bạn đã ghé qua đây. ♡\n\nHãy cứ thoải mái trò chuyện, tìm người chơi cùng, bật mic khi muốn, hay đơn giản là ngồi chill một chút dưới ánh trăng. ☾\n\nMong rằng từ một người xa lạ, bạn sẽ tìm thấy những người khiến mỗi lần online đều trở nên đáng mong chờ. ✦',
             autorole_enabled INTEGER NOT NULL DEFAULT 0,
             xp_enabled INTEGER NOT NULL DEFAULT 1
         );
@@ -155,16 +141,7 @@ db_init()
 # Migrate older Luna databases without deleting existing data.
 def db_migrate():
     columns = {row["name"] for row in db.execute("PRAGMA table_info(guild_config)").fetchall()}
-    additions = {
-        "welcome_title": "TEXT NOT NULL DEFAULT '🌙 Chào mừng bạn đến với {server}.'",
-        "goodbye_title": "TEXT NOT NULL DEFAULT '🌙 Hẹn gặp lại {member_name}.'",
-        "welcome_image": "TEXT NOT NULL DEFAULT ''",
-        "goodbye_image": "TEXT NOT NULL DEFAULT ''",
-        "welcome_color": "INTEGER NOT NULL DEFAULT 0xB8D8FF",
-        "goodbye_color": "INTEGER NOT NULL DEFAULT 0xB8D8FF",
-        "welcome_role": "INTEGER",
-        "goodbye_role": "INTEGER",
-    }
+    additions = {}
     for name, definition in additions.items():
         if name not in columns:
             db.execute(f"ALTER TABLE guild_config ADD COLUMN {name} {definition}")
@@ -264,11 +241,7 @@ def get_config(guild_id: int):
 
 def update_config(guild_id: int, field: str, value):
     allowed = {
-        "prefix", "welcome_channel", "goodbye_channel", "log_channel",
-        "autorole_id", "welcome_text", "goodbye_text",
-        "welcome_title", "goodbye_title", "welcome_image", "goodbye_image",
-        "welcome_color", "goodbye_color", "welcome_role", "goodbye_role",
-        "welcome_enabled", "goodbye_enabled", "autorole_enabled", "xp_enabled"
+        "prefix", "log_channel", "autorole_id", "autorole_enabled", "xp_enabled"
     }
     if field not in allowed:
         raise ValueError("Invalid config field")
@@ -383,8 +356,6 @@ async def on_message(message: discord.Message):
 @bot.event
 async def on_member_join(member: discord.Member):
     cfg = get_config(member.guild.id)
-
-    # Autorole is independent from Welcome.
     if cfg["autorole_enabled"] and cfg["autorole_id"]:
         role = member.guild.get_role(cfg["autorole_id"])
         if role:
@@ -392,60 +363,6 @@ async def on_member_join(member: discord.Member):
                 await member.add_roles(role, reason="Luna autorole")
             except discord.HTTPException:
                 pass
-
-    if not cfg["welcome_enabled"] or not cfg["welcome_channel"]:
-        return
-
-    channel = member.guild.get_channel(cfg["welcome_channel"])
-    if not channel:
-        return
-
-    title = format_message(cfg["welcome_title"], member)
-    description = format_message(cfg["welcome_text"], member)
-    e = embed(title, description, discord.Color(int(cfg["welcome_color"])))
-    if cfg["welcome_image"]:
-        e.set_image(url=cfg["welcome_image"])
-    e.set_footer(text=f"{member.guild.name} • Luna")
-
-    role_id = cfg["welcome_role"]
-    role = member.guild.get_role(role_id) if role_id else None
-    content = f"🪽 {member.mention} đã ghé qua {member.guild.name} rồi nè! ♡"
-    if role:
-        content += f"\n🎀 {role.mention} — ra chào đón thành viên mới nhé! ♡"
-
-    try:
-        await channel.send(content=content, embed=e)
-    except discord.HTTPException as exc:
-        print("Welcome send error:", repr(exc))
-
-
-@bot.event
-async def on_member_remove(member: discord.Member):
-    cfg = get_config(member.guild.id)
-    if not cfg["goodbye_enabled"] or not cfg["goodbye_channel"]:
-        return
-
-    channel = member.guild.get_channel(cfg["goodbye_channel"])
-    if not channel:
-        return
-
-    title = format_message(cfg["goodbye_title"], member)
-    description = format_message(cfg["goodbye_text"], member)
-    e = embed(title, description, discord.Color(int(cfg["goodbye_color"])))
-    if cfg["goodbye_image"]:
-        e.set_image(url=cfg["goodbye_image"])
-    e.set_footer(text=f"{member.guild.name} • Luna")
-
-    role_id = cfg["goodbye_role"]
-    role = member.guild.get_role(role_id) if role_id else None
-    content = f"🌙 Tạm biệt {member.mention} — hẹn gặp lại! ♡"
-    if role:
-        content += f"\n🎀 {role.mention}"
-
-    try:
-        await channel.send(content=content, embed=e)
-    except discord.HTTPException as exc:
-        print("Goodbye send error:", repr(exc))
 
 
 @bot.event
@@ -522,25 +439,10 @@ CATEGORIES = {
     ]),
     "server": ("⚙️ Server Setup", [
         "`l!settings` — xem cấu hình",
-        "`l!setwelcome #kênh [@role]`",
-        "`l!setgoodbye #kênh [@role]`",
         "`l!setlog #kênh`",
         "`l!setautorole @role`",
-        "`l!welcome on/off`",
-        "`l!goodbye on/off`",
         "`l!autorole on/off`",
         "`l!xp on/off`",
-        "`l!setwelcometext <nội dung>`",
-        "`l!setwelcometitle <tiêu đề>`",
-        "`l!setwelcomeimage <link/ảnh>`",
-        "`l!setwelcomecolor #mãmàu`",
-        "`l!setwelcomerole @role`",
-        "`l!setgoodbyetext <nội dung>`",
-        "`l!setbyetitle <tiêu đề>`",
-        "`l!setbyeimage <link/ảnh>`",
-        "`l!setbyecolor #mãmàu`",
-        "`l!setbyerole @role`",
-        "`l!testwelcome` • `l!testbye`",
     ]),
     "owner": ("👑 Owner Bot", [
         "`l!cheatxu @user <số xu>` — cộng xu cho user",
@@ -982,7 +884,7 @@ async def doden(ctx, color: str, bet: int):
         result = f"💸 Ra **{actual}** — mất **{money(bet)}**."
     await ctx.reply(result)
 
-# ============================================================
+ # ============================================================
 # LEVEL / XP
 # ============================================================
 
@@ -1173,7 +1075,7 @@ async def clear(ctx, amount: int):
         pass
 
 # ============================================================
-# ADMIN / WELCOME / GOODBYE
+# ADMIN / SERVER SETUP
 # ============================================================
 
 """Register all server/admin commands on the shared Luna bot."""
@@ -1187,202 +1089,10 @@ async def settings(ctx):
     def role(rid):
         return f"<@&{rid}>" if rid else "Chưa đặt"
     await ctx.reply(embed=embed("⚙️ Cấu hình Luna",
-        f"👋 Welcome: {'Bật' if cfg['welcome_enabled'] else 'Tắt'} • {ch(cfg['welcome_channel'])}\n"
-        f"🚪 Goodbye: {'Bật' if cfg['goodbye_enabled'] else 'Tắt'} • {ch(cfg['goodbye_channel'])}\n"
-        f"🎀 Welcome role: {role(cfg['welcome_role'])}\n"
-        f"🎀 Goodbye role: {role(cfg['goodbye_role'])}\n"
-        f"🖼️ Welcome ảnh: {'Đã cài' if cfg['welcome_image'] else 'Chưa cài'}\n"
-        f"🖼️ Goodbye ảnh: {'Đã cài' if cfg['goodbye_image'] else 'Chưa cài'}\n"
         f"📋 Log: {ch(cfg['log_channel'])}\n"
         f"🎭 Autorole: {'Bật' if cfg['autorole_enabled'] else 'Tắt'} • {role(cfg['autorole_id'])}\n"
         f"✨ XP: {'Bật' if cfg['xp_enabled'] else 'Tắt'}"
     ))
-
-@bot.command()
-@admin_only()
-async def setwelcome(ctx, channel: discord.TextChannel, role: discord.Role | None = None):
-    update_config(ctx.guild.id, "welcome_channel", channel.id)
-    if role:
-        update_config(ctx.guild.id, "welcome_role", role.id)
-    await ctx.reply(f"✅ Welcome: {channel.mention}" + (f" • Role: {role.mention}" if role else ""))
-
-@bot.command()
-@admin_only()
-async def setgoodbye(ctx, channel: discord.TextChannel, role: discord.Role | None = None):
-    update_config(ctx.guild.id, "goodbye_channel", channel.id)
-    if role:
-        update_config(ctx.guild.id, "goodbye_role", role.id)
-    await ctx.reply(f"✅ Goodbye: {channel.mention}" + (f" • Role: {role.mention}" if role else ""))
-
-@bot.command()
-@admin_only()
-async def setlog(ctx, channel: discord.TextChannel):
-    update_config(ctx.guild.id, "log_channel", channel.id)
-    await ctx.reply(f"✅ Log channel: {channel.mention}")
-
-@bot.command()
-@admin_only()
-async def setautorole(ctx, role: discord.Role):
-    update_config(ctx.guild.id, "autorole_id", role.id)
-    await ctx.reply(f"✅ Autorole đã đặt thành {role.mention}.")
-
-async def toggle_setting(ctx, field, value, label):
-    update_config(ctx.guild.id, field, 1 if value == "on" else 0)
-    await ctx.reply(f"✅ {label}: **{'BẬT' if value == 'on' else 'TẮT'}**")
-
-@bot.command()
-@admin_only()
-async def welcome(ctx, value: str):
-    value = value.lower()
-    if value not in ("on", "off"):
-        return await ctx.reply("Dùng `l!welcome on` hoặc `l!welcome off`.")
-    await toggle_setting(ctx, "welcome_enabled", value, "Welcome")
-
-@bot.command()
-@admin_only()
-async def goodbye(ctx, value: str):
-    value = value.lower()
-    if value not in ("on", "off"):
-        return await ctx.reply("Dùng `l!goodbye on` hoặc `l!goodbye off`.")
-    await toggle_setting(ctx, "goodbye_enabled", value, "Goodbye")
-
-@bot.command()
-@admin_only()
-async def autorole(ctx, value: str):
-    value = value.lower()
-    if value not in ("on", "off"):
-        return await ctx.reply("Dùng `l!autorole on` hoặc `l!autorole off`.")
-    await toggle_setting(ctx, "autorole_enabled", value, "Autorole")
-
-@bot.command()
-@admin_only()
-async def xp(ctx, value: str):
-    value = value.lower()
-    if value not in ("on", "off"):
-        return await ctx.reply("Dùng `l!xp on` hoặc `l!xp off`.")
-    await toggle_setting(ctx, "xp_enabled", value, "XP")
-
-@bot.command()
-@admin_only()
-async def setwelcometext(ctx, *, content: str):
-    update_config(ctx.guild.id, "welcome_text", content[:4000])
-    await ctx.reply("✅ Đã cập nhật nội dung Welcome.")
-
-@bot.command(aliases=["setwelcomemsg"])
-@admin_only()
-async def setwelcomemessage(ctx, *, content: str):
-    update_config(ctx.guild.id, "welcome_text", content[:4000])
-    await ctx.reply("✅ Đã cập nhật nội dung Welcome.")
-
-@bot.command()
-@admin_only()
-async def setwelcometitle(ctx, *, title: str):
-    update_config(ctx.guild.id, "welcome_title", title[:256])
-    await ctx.reply("✅ Đã cập nhật tiêu đề Welcome.")
-
-@bot.command()
-@admin_only()
-async def setwelcomeimage(ctx, url: str | None = None):
-    if not url and ctx.message.attachments:
-        url = ctx.message.attachments[0].url
-    if url and not url.startswith(("http://", "https://")):
-        return await ctx.reply("❌ Link ảnh phải bắt đầu bằng `https://` hoặc `http://`.")
-    update_config(ctx.guild.id, "welcome_image", url or "")
-    await ctx.reply("🖼️ Đã cập nhật ảnh Welcome." if url else "🖼️ Đã xoá ảnh Welcome.")
-
-@bot.command()
-@admin_only()
-async def setwelcomecolor(ctx, color: str):
-    raw = color.strip().replace("#", "")
-    if len(raw) != 6:
-        return await ctx.reply("❌ Màu phải dạng `#B8D8FF`.")
-    try:
-        value = int(raw, 16)
-    except ValueError:
-        return await ctx.reply("❌ Mã màu không hợp lệ.")
-    update_config(ctx.guild.id, "welcome_color", value)
-    await ctx.reply("🎨 Đã đổi màu Welcome.")
-
-@bot.command()
-@admin_only()
-async def setwelcomerole(ctx, role: discord.Role | None = None):
-    update_config(ctx.guild.id, "welcome_role", role.id if role else None)
-    await ctx.reply(f"🎀 Welcome role: {role.mention}" if role else "🎀 Đã xoá Welcome role.")
-
-@bot.command()
-@admin_only()
-async def setgoodbyetext(ctx, *, content: str):
-    update_config(ctx.guild.id, "goodbye_text", content[:4000])
-    await ctx.reply("✅ Đã cập nhật nội dung Goodbye.")
-
-@bot.command(aliases=["setbyemsg"])
-@admin_only()
-async def setbyemessage(ctx, *, content: str):
-    update_config(ctx.guild.id, "goodbye_text", content[:4000])
-    await ctx.reply("✅ Đã cập nhật nội dung Goodbye.")
-
-@bot.command()
-@admin_only()
-async def setbyetitle(ctx, *, title: str):
-    update_config(ctx.guild.id, "goodbye_title", title[:256])
-    await ctx.reply("✅ Đã cập nhật tiêu đề Goodbye.")
-
-@bot.command()
-@admin_only()
-async def setbyeimage(ctx, url: str | None = None):
-    if not url and ctx.message.attachments:
-        url = ctx.message.attachments[0].url
-    if url and not url.startswith(("http://", "https://")):
-        return await ctx.reply("❌ Link ảnh phải bắt đầu bằng `https://` hoặc `http://`.")
-    update_config(ctx.guild.id, "goodbye_image", url or "")
-    await ctx.reply("🖼️ Đã cập nhật ảnh Goodbye." if url else "🖼️ Đã xoá ảnh Goodbye.")
-
-@bot.command()
-@admin_only()
-async def setbyecolor(ctx, color: str):
-    raw = color.strip().replace("#", "")
-    if len(raw) != 6:
-        return await ctx.reply("❌ Màu phải dạng `#B8D8FF`.")
-    try:
-        value = int(raw, 16)
-    except ValueError:
-        return await ctx.reply("❌ Mã màu không hợp lệ.")
-    update_config(ctx.guild.id, "goodbye_color", value)
-    await ctx.reply("🎨 Đã đổi màu Goodbye.")
-
-@bot.command()
-@admin_only()
-async def setbyerole(ctx, role: discord.Role | None = None):
-    update_config(ctx.guild.id, "goodbye_role", role.id if role else None)
-    await ctx.reply(f"🎀 Goodbye role: {role.mention}" if role else "🎀 Đã xoá Goodbye role.")
-
-@bot.command()
-@admin_only()
-async def testwelcome(ctx):
-    cfg = get_config(ctx.guild.id)
-    member = ctx.author
-    e = embed(format_message(cfg["welcome_title"], member), format_message(cfg["welcome_text"], member), discord.Color(int(cfg["welcome_color"])))
-    if cfg["welcome_image"]:
-        e.set_image(url=cfg["welcome_image"])
-    role = ctx.guild.get_role(cfg["welcome_role"]) if cfg["welcome_role"] else None
-    content = f"🪽 {member.mention} đã ghé qua {ctx.guild.name} rồi nè! ♡"
-    if role:
-        content += f"\n🎀 {role.mention} — ra chào đón thành viên mới nhé! ♡"
-    await ctx.reply(content=content, embed=e)
-
-@bot.command()
-@admin_only()
-async def testbye(ctx):
-    cfg = get_config(ctx.guild.id)
-    member = ctx.author
-    e = embed(format_message(cfg["goodbye_title"], member), format_message(cfg["goodbye_text"], member), discord.Color(int(cfg["goodbye_color"])))
-    if cfg["goodbye_image"]:
-        e.set_image(url=cfg["goodbye_image"])
-    role = ctx.guild.get_role(cfg["goodbye_role"]) if cfg["goodbye_role"] else None
-    content = f"🌙 Tạm biệt {member.mention} — hẹn gặp lại! ♡"
-    if role:
-        content += f"\n🎀 {role.mention}"
-    await ctx.reply(content=content, embed=e)
 
 # ============================================================
 # ROLE MANAGEMENT

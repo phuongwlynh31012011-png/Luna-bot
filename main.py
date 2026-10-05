@@ -110,8 +110,6 @@ def db_init():
             guild_id INTEGER PRIMARY KEY,
             prefix TEXT NOT NULL DEFAULT 'l!',
             log_channel INTEGER,
-            autorole_id INTEGER,
-            autorole_enabled INTEGER NOT NULL DEFAULT 0,
             xp_enabled INTEGER NOT NULL DEFAULT 1
         );
 
@@ -240,7 +238,7 @@ def get_config(guild_id: int):
 
 def update_config(guild_id: int, field: str, value):
     allowed = {
-        "prefix", "log_channel", "autorole_id", "autorole_enabled", "xp_enabled"
+        "prefix", "log_channel", "xp_enabled"
     }
     if field not in allowed:
         raise ValueError("Invalid config field")
@@ -353,18 +351,6 @@ async def on_message(message: discord.Message):
 
 
 @bot.event
-async def on_member_join(member: discord.Member):
-    cfg = get_config(member.guild.id)
-    if cfg["autorole_enabled"] and cfg["autorole_id"]:
-        role = member.guild.get_role(cfg["autorole_id"])
-        if role:
-            try:
-                await member.add_roles(role, reason="Luna autorole")
-            except discord.HTTPException:
-                pass
-
-
-@bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
@@ -439,8 +425,6 @@ CATEGORIES = {
     "server": ("⚙️ Server Setup", [
         "`l!settings` — xem cấu hình",
         "`l!setlog #kênh`",
-        "`l!setautorole @role`",
-        "`l!autorole on/off`",
         "`l!xp on/off`",
     ]),
     "owner": ("👑 Owner Bot", [

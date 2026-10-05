@@ -1117,19 +1117,67 @@ async def settings(ctx):
 # ROLE MANAGEMENT
 # ============================================================
 
+def staff_or_admin():
+    async def predicate(ctx: commands.Context):
+        # Admin / Manage Server
+        if is_admin_member(ctx.author):
+            return True
+
+        # Role Staff
+        return any(
+            role.name.lower() == "staff"
+            for role in ctx.author.roles
+        )
+
+    return commands.check(predicate)
+
+
 @bot.command(name="role")
-@admin_only()
-async def role(ctx, member: discord.Member, role: discord.Role):
-    """Thêm role: l!role @user @role"""
+@staff_or_admin()
+async def role(ctx, member: discord.Member, *, role_name: str):
+    """
+    Thêm role cho thành viên.
+
+    Cú pháp:
+    l!role @user tên-role
+
+    Ví dụ:
+    l!role @lyyn partner
+    """
+
+    role_name = role_name.strip()
+
+    # Tìm role theo tên, không phân biệt chữ hoa/chữ thường
+    role = discord.utils.find(
+        lambda r: r.name.lower() == role_name.lower(),
+        ctx.guild.roles
+    )
+
+    # Không tìm thấy role
+    if role is None:
+        return await ctx.reply(
+            f"❌ Không tìm thấy role **{role_name}**."
+        )
+
+    # Không cho thêm @everyone
     if role.is_default():
-        return await ctx.reply("❌ Không thể thêm role @everyone.")
+        return await ctx.reply(
+            "❌ Không thể thêm role @everyone."
+        )
 
+    # Không cho quản lý role bot/integration
     if role.managed:
-        return await ctx.reply("❌ Không thể quản lý role tích hợp/bot.")
+        return await ctx.reply(
+            "❌ Không thể quản lý role tích hợp hoặc role của bot."
+        )
 
+    # Kiểm tra role của Luna
     if role >= ctx.guild.me.top_role:
-        return await ctx.reply("❌ Role của bot phải cao hơn role cần thêm.")
+        return await ctx.reply(
+            "❌ Role của Luna phải nằm **cao hơn role cần thêm**."
+        )
 
+    # User đã có role
     if role in member.roles:
         return await ctx.reply(
             f"❌ {member.mention} đã có {role.mention} rồi."
@@ -1140,50 +1188,21 @@ async def role(ctx, member: discord.Member, role: discord.Role):
             role,
             reason=f"Luna role add by {ctx.author}"
         )
+
         await ctx.reply(
             f"➕ Đã thêm {role.mention} cho {member.mention}."
         )
 
     except discord.Forbidden:
-        await ctx.reply("❌ Luna không có quyền quản lý role này.")
-
-    except discord.HTTPException:
-        await ctx.reply("❌ Discord từ chối thao tác role, thử lại sau.")
-
-
-@bot.command(name="unrole")
-@admin_only()
-async def unrole(ctx, member: discord.Member, role: discord.Role):
-    """Gỡ role: l!unrole @user @role"""
-    if role.is_default():
-        return await ctx.reply("❌ Không thể gỡ role @everyone.")
-
-    if role.managed:
-        return await ctx.reply("❌ Không thể quản lý role tích hợp/bot.")
-
-    if role >= ctx.guild.me.top_role:
-        return await ctx.reply("❌ Role của bot phải cao hơn role cần gỡ.")
-
-    if role not in member.roles:
-        return await ctx.reply(
-            f"❌ {member.mention} không có {role.mention}."
-        )
-
-    try:
-        await member.remove_roles(
-            role,
-            reason=f"Luna role remove by {ctx.author}"
-        )
         await ctx.reply(
-            f"➖ Đã gỡ {role.mention} khỏi {member.mention}."
+            "❌ Luna không có quyền thêm role này."
         )
 
-    except discord.Forbidden:
-        await ctx.reply("❌ Luna không có quyền quản lý role này.")
-
     except discord.HTTPException:
-        await ctx.reply("❌ Discord từ chối thao tác role, thử lại sau.")
-
+        await ctx.reply(
+            "❌ Discord từ chối thao tác, thử lại sau."
+    )
+        
 # ============================================================
 # GIVEAWAY — PERSISTENT ACROSS RESTARTS
 # ============================================================

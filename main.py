@@ -410,8 +410,8 @@ CATEGORIES = {
         "`l!xptop` — bảng xếp hạng XP",
     ]),
     "moderation": ("🛡️ Moderation", [
-        "`l!role @user @role` — thêm role cho thành viên",
-        "`l!unrole @user @role` — gỡ role khỏi thành viên",
+        "`l!role @user tên-role` — thêm role cho thành viên",
+        "`l!unrole @user tên-role` — gỡ role khỏi thành viên",
         "`l!lock` — khoá kênh hiện tại",
         "`l!unlock` — mở khoá kênh hiện tại",
         "`l!warn @user <lý do>`",

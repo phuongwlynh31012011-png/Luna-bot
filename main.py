@@ -1185,7 +1185,7 @@ async def om(ctx, member: discord.Member):
     return await ctx.reply(random.choice(replies))
 
 
-@@bot.command()
+@bot.command()
 async def be(ctx, member: discord.Member):
 
     if member.id == ctx.author.id:

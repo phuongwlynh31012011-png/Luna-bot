@@ -412,6 +412,8 @@ CATEGORIES = {
     "moderation": ("🛡️ Moderation", [
         "`l!role @user @role` — thêm role cho thành viên",
         "`l!unrole @user @role` — gỡ role khỏi thành viên",
+        "`l!lock` — khoá kênh hiện tại",
+        "`l!unlock` — mở khoá kênh hiện tại",
         "`l!warn @user <lý do>`",
         "`l!warnings @user`",
         "`l!clearwarn @user`",
@@ -1057,6 +1059,40 @@ async def clear(ctx, amount: int):
     except discord.HTTPException:
         pass
 
+
+@bot.command()
+@admin_only()
+async def lock(ctx):
+    """Khoá kênh hiện tại."""
+    try:
+        overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+        overwrite.send_messages = False
+        await ctx.channel.set_permissions(
+            ctx.guild.default_role,
+            overwrite=overwrite,
+            reason=f"Lock by {ctx.author}"
+        )
+        await ctx.reply("🔒 Đã **khoá kênh** này.")
+    except discord.Forbidden:
+        await ctx.reply("❌ Luna không có quyền khoá kênh này.")
+
+
+@bot.command()
+@admin_only()
+async def unlock(ctx):
+    """Mở khoá kênh hiện tại."""
+    try:
+        overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
+        overwrite.send_messages = None
+        await ctx.channel.set_permissions(
+            ctx.guild.default_role,
+            overwrite=overwrite,
+            reason=f"Unlock by {ctx.author}"
+        )
+        await ctx.reply("🔓 Đã **mở khoá kênh** này.")
+    except discord.Forbidden:
+        await ctx.reply("❌ Luna không có quyền mở khoá kênh này.")
+        
 # ============================================================
 # ADMIN / SERVER SETUP
 # ============================================================

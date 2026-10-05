@@ -997,7 +997,7 @@ async def love(ctx, member: discord.Member):
         return await ctx.reply(random.choice(replies))
 
         replies = [
-            f"💗 {ctx.author.mention} vừa thả một chút tình yêu về phía {member.mention}… "
+            f"💗 {ctx.author.mention} vừa thả một chút tình yêu về phía {member.mention}… ",
             f"🌙 {ctx.author.mention} ơi, thích {member.mention} đến mức phải gọi Luna ra làm chứng luôn à? 🤭",
             f"🌙 {ctx.author.mention} khai thật đi, thích {member.mention} lâu chưa? 👀",
             f"♡ {member.mention}, Luna nghĩ bạn nên để ý {ctx.author.mention} một chút đó 🤭",

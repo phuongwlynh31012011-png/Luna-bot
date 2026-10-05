@@ -487,7 +487,7 @@ CATEGORIES = {
     "games": ("🎮 Trò chơi", [
         "`l!rps <búa|kéo|bao> <cược>`",
         "`l!dice <1-6> <cược>`",
-        "`l!baucua <mặt> <cược>`",
+        "`l!baucua <bầu|cua|tôm|cá|gà|nai> <cược>`",
         "`l!doanso <1-100> <cược>`",
         "`l!doden <đỏ|đen> <cược>`",
     ]),

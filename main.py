@@ -135,10 +135,11 @@ def db_init():
         CREATE TABLE IF NOT EXISTS marriages (
     user1 INTEGER NOT NULL,
     user2 INTEGER NOT NULL,
-    guild_id INTEGER NOT NULL,
     created_at INTEGER NOT NULL,
     intimacy INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (user1, user2, guild_id)
+    PRIMARY KEY (user1, user2),
+    UNIQUE (user1),
+    UNIQUE (user2)
         );
     """)
 
@@ -186,25 +187,24 @@ def get_love_level(intimacy):
     else:
         return "🌱 Mới quen"
 
-def add_intimacy(guild_id, user1, user2, amount):
+
+def add_intimacy(user1, user2, amount):
     pair = tuple(sorted((user1, user2)))
 
     row = db.execute(
         """
         SELECT intimacy
         FROM marriages
-        WHERE guild_id = ?
-        AND user1 = ?
+        WHERE user1 = ?
         AND user2 = ?
         """,
-        (guild_id, pair[0], pair[1])
+        pair
     ).fetchone()
 
-    # Chưa kết hôn → không cộng điểm
     if row is None:
         return None
 
-    current = row[0]
+    current = row["intimacy"]
 
     new_intimacy = min(
         current + amount,
@@ -215,13 +215,11 @@ def add_intimacy(guild_id, user1, user2, amount):
         """
         UPDATE marriages
         SET intimacy = ?
-        WHERE guild_id = ?
-        AND user1 = ?
+        WHERE user1 = ?
         AND user2 = ?
         """,
         (
             new_intimacy,
-            guild_id,
             pair[0],
             pair[1]
         )
@@ -1094,10 +1092,9 @@ async def hon(ctx, member: discord.Member):
         )
 
     add_intimacy(
-        ctx.guild.id,
         ctx.author.id,
         member.id,
-        70
+        50
     )
 
     replies = [
@@ -1122,7 +1119,6 @@ async def xoadau(ctx, member: discord.Member):
         )
 
     add_intimacy(
-        ctx.guild.id,
         ctx.author.id,
         member.id,
         40
@@ -1179,10 +1175,9 @@ async def om(ctx, member: discord.Member):
         )
 
     add_intimacy(
-        ctx.guild.id,
         ctx.author.id,
         member.id,
-        50
+        30
     )
 
     replies = [
@@ -1235,7 +1230,6 @@ async def can(ctx, member: discord.Member):
         )
 
     add_intimacy(
-        ctx.guild.id,
         ctx.author.id,
         member.id,
         30
@@ -1322,12 +1316,207 @@ async def marriage(ctx):
         )
     ).fetchone()
 
+class MarriageView(discord.ui.View):
+    def __init__(self, proposer_id: int, target_id: int):
+        super().__init__(timeout=120)
+        self.proposer_id = proposer_id
+        self.target_id = target_id
+        self.finished = False
+
+    @discord.ui.button(
+        label="Đồng ý",
+        emoji="💍",
+        style=discord.ButtonStyle.success
+    )
+    async def accept(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if interaction.user.id != self.target_id:
+            return await interaction.response.send_message(
+                "❌ Đây không phải lời cầu hôn dành cho bạn.",
+                ephemeral=True
+            )
+
+        if self.finished:
+            return
+
+        pair = tuple(sorted((self.proposer_id, self.target_id)))
+
+        # Kiểm tra hai người đã kết hôn chưa
+        exists = db.execute(
+            """
+            SELECT 1
+            FROM marriages
+            WHERE user1 = ?
+            OR user2 = ?
+            """,
+            (self.proposer_id, self.proposer_id)
+        ).fetchone()
+
+        if exists:
+            self.finished = True
+            return await interaction.response.edit_message(
+                content="❌ Một trong hai người đã kết hôn với người khác.",
+                view=None
+            )
+
+        exists = db.execute(
+            """
+            SELECT 1
+            FROM marriages
+            WHERE user1 = ?
+            OR user2 = ?
+            """,
+            (self.target_id, self.target_id)
+        ).fetchone()
+
+        if exists:
+            self.finished = True
+            return await interaction.response.edit_message(
+                content="❌ Một trong hai người đã kết hôn với người khác.",
+                view=None
+            )
+
+        db.execute(
+            """
+            INSERT INTO marriages
+            (user1, user2, created_at, intimacy)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                pair[0],
+                pair[1],
+                now_ts(),
+                0
+            )
+        )
+
+        db.commit()
+
+        self.finished = True
+
+        for child in self.children:
+            child.disabled = True
+
+        await interaction.response.edit_message(
+            content=(
+                f"💍🌙 Chúc mừng <@{self.proposer_id}> và "
+                f"<@{self.target_id}> đã chính thức kết hôn!"
+            ),
+            view=self
+        )
+
+    @discord.ui.button(
+        label="Từ chối",
+        emoji="💔",
+        style=discord.ButtonStyle.danger
+    )
+    async def decline(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if interaction.user.id != self.target_id:
+            return await interaction.response.send_message(
+                "❌ Đây không phải lời cầu hôn dành cho bạn.",
+                ephemeral=True
+            )
+
+        if self.finished:
+            return
+
+        self.finished = True
+
+        await interaction.response.edit_message(
+            content=(
+                f"💔 <@{self.target_id}> đã từ chối lời cầu hôn "
+                f"của <@{self.proposer_id}>."
+            ),
+            view=None
+        )
+
+
+@bot.command()
+async def kethon(ctx, member: discord.Member):
+
+    if member.id == ctx.author.id:
+        return await ctx.reply(
+            "❌💍 Không thể tự kết hôn với chính mình."
+        )
+
+    if member.bot:
+        return await ctx.reply(
+            "❌🤖 Không thể kết hôn với bot."
+        )
+
+    # Người cầu hôn đã kết hôn chưa?
+    proposer_married = db.execute(
+        """
+        SELECT 1
+        FROM marriages
+        WHERE user1 = ?
+        OR user2 = ?
+        """,
+        (ctx.author.id, ctx.author.id)
+    ).fetchone()
+
+    if proposer_married:
+        return await ctx.reply(
+            "❌💍 Bạn đã kết hôn rồi."
+        )
+
+    # Người được cầu hôn đã kết hôn chưa?
+    target_married = db.execute(
+        """
+        SELECT 1
+        FROM marriages
+        WHERE user1 = ?
+        OR user2 = ?
+        """,
+        (member.id, member.id)
+    ).fetchone()
+
+    if target_married:
+        return await ctx.reply(
+            "❌💍 Người này đã kết hôn rồi."
+        )
+
+    view = MarriageView(
+        ctx.author.id,
+        member.id
+    )
+
+    await ctx.reply(
+        f"💍 **{ctx.author.mention} đang cầu hôn {member.mention}!**\n\n"
+        f"{member.mention}, bạn có đồng ý kết hôn không?",
+        view=view
+    )
+
+
+@bot.command()
+async def marriage(ctx):
+
+    row = db.execute(
+        """
+        SELECT user1, user2, created_at, intimacy
+        FROM marriages
+        WHERE user1 = ?
+        OR user2 = ?
+        """,
+        (ctx.author.id, ctx.author.id)
+    ).fetchone()
+
     if row is None:
         return await ctx.reply(
             "❌💍 Bạn chưa kết hôn với ai cả."
         )
 
-    user1, user2, created_at, intimacy = row
+    user1 = row["user1"]
+    user2 = row["user2"]
+    created_at = row["created_at"]
+    intimacy = row["intimacy"]
 
     partner_id = user2 if user1 == ctx.author.id else user1
 
@@ -1346,6 +1535,7 @@ async def marriage(ctx):
         f"✨ Cấp độ: **{level}**"
     )
 
+
 @bot.command()
 async def lyhon(ctx):
 
@@ -1353,43 +1543,37 @@ async def lyhon(ctx):
         """
         SELECT user1, user2
         FROM marriages
-        WHERE guild_id = ?
-        AND (user1 = ? OR user2 = ?)
+        WHERE user1 = ?
+        OR user2 = ?
         """,
-        (
-            ctx.guild.id,
-            ctx.author.id,
-            ctx.author.id
-        )
+        (ctx.author.id, ctx.author.id)
     ).fetchone()
 
     if row is None:
         return await ctx.reply(
-            "❌💔 Bạn đang độc thân mà, ly hôn với ai vậy? 😭"
+            "❌💔 Bạn đang độc thân mà, ly hôn với ai vậy?"
         )
 
-    user1, user2 = row
+    user1 = row["user1"]
+    user2 = row["user2"]
 
     partner_id = user2 if user1 == ctx.author.id else user1
 
     db.execute(
         """
         DELETE FROM marriages
-        WHERE guild_id = ?
-        AND user1 = ?
+        WHERE user1 = ?
         AND user2 = ?
         """,
-        (
-            ctx.guild.id,
-            min(ctx.author.id, partner_id),
-            max(ctx.author.id, partner_id)
-        )
+        (min(ctx.author.id, partner_id),
+         max(ctx.author.id, partner_id))
     )
 
     db.commit()
 
-    return await ctx.reply(
-        f"💔🌙 {ctx.author.mention} và <@{partner_id}> đã chính thức đường ai nấy đi..."
+    await ctx.reply(
+        f"💔🌙 {ctx.author.mention} và <@{partner_id}> "
+        f"đã chính thức ly hôn."
     )
     
 # ============================================================
@@ -1715,6 +1899,105 @@ async def cheatxu(ctx, member: discord.Member, amount: int):
     await ctx.reply(
         f"👑 Đã cộng **{money(amount)}** cho {member.mention}.\n"
         f"💰 Số dư mới: **{money(new_balance)}**.")
+
+
+@bot.command()
+@owner_only()
+async def marryforce(
+    ctx,
+    user1: discord.Member,
+    user2: discord.Member
+):
+
+    if user1.id == user2.id:
+        return await ctx.reply(
+            "❌ Không thể cho một người kết hôn với chính mình."
+        )
+
+    if user1.bot or user2.bot:
+        return await ctx.reply(
+            "❌ Không thể kết hôn với bot."
+        )
+
+    married1 = db.execute(
+        """
+        SELECT 1 FROM marriages
+        WHERE user1 = ? OR user2 = ?
+        """,
+        (user1.id, user1.id)
+    ).fetchone()
+
+    married2 = db.execute(
+        """
+        SELECT 1 FROM marriages
+        WHERE user1 = ? OR user2 = ?
+        """,
+        (user2.id, user2.id)
+    ).fetchone()
+
+    if married1 or married2:
+        return await ctx.reply(
+            "❌ Một trong hai người đã kết hôn với người khác."
+        )
+
+    pair = tuple(sorted((user1.id, user2.id)))
+
+    db.execute(
+        """
+        INSERT INTO marriages
+        (user1, user2, created_at, intimacy)
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            pair[0],
+            pair[1],
+            now_ts(),
+            0
+        )
+    )
+
+    db.commit()
+
+    await ctx.reply(
+        f"👑💍 Owner đã thiết lập hôn nhân cho "
+        f"{user1.mention} và {user2.mention}."
+    )
+
+
+@bot.command()
+@owner_only()
+async def divorceforce(ctx, member: discord.Member):
+
+    row = db.execute(
+        """
+        SELECT user1, user2
+        FROM marriages
+        WHERE user1 = ?
+        OR user2 = ?
+        """,
+        (member.id, member.id)
+    ).fetchone()
+
+    if row is None:
+        return await ctx.reply(
+            "❌ Người này hiện không kết hôn."
+        )
+
+    db.execute(
+        """
+        DELETE FROM marriages
+        WHERE user1 = ?
+        AND user2 = ?
+        """,
+        (row["user1"], row["user2"])
+    )
+
+    db.commit()
+
+    await ctx.reply(
+        f"👑💔 Owner đã can thiệp và kết thúc hôn nhân của "
+        f"{member.mention}."
+    )
 
 
 @bot.command()

@@ -1022,8 +1022,8 @@ async def hon(ctx, member: discord.Member):
         
     if member.bot:
         return await ctx.reply(
-            "
-            
+            "❌s lại yêu bot thế này luna k đồng ý đâu"
+        )   
 
     await ctx.reply(
         f"💗 {ctx.author.mention} đã hôn {member.mention}."

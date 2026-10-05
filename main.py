@@ -154,7 +154,18 @@ def db_migrate():
     for name, definition in additions.items():
         if name not in columns:
             db.execute(f"ALTER TABLE guild_config ADD COLUMN {name} {definition}")
-    db.commit()
+
+marriage_columns = {
+    row["name"]
+    for row in db.execute("PRAGMA table_info(marriages)").fetchall()
+}
+
+if "intimacy" not in marriage_columns:
+    db.execute(
+        "ALTER TABLE marriages ADD COLUMN intimacy INTEGER NOT NULL DEFAULT 0"
+    )
+
+db.commit()
 
 db_migrate()
         
@@ -1070,7 +1081,6 @@ async def love(ctx, member: discord.Member):
     return await ctx.reply(random.choice(replies))
 
 @bot.command()
-@bot.command()
 async def hon(ctx, member: discord.Member):
 
     if member.id == ctx.author.id:
@@ -1098,7 +1108,6 @@ async def hon(ctx, member: discord.Member):
 
     return await ctx.reply(random.choice(replies))
 
-@bot.command()
 @bot.command()
 async def xoadau(ctx, member: discord.Member):
 

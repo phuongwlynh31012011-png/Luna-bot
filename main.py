@@ -21,6 +21,9 @@ OWNER_ID = int(os.getenv("OWNER_ID", "0") or 0)
 PREFIXES = ("l!", "L!")
 DB_FILE = os.getenv("LUNA_DB", "luna.db")
 
+def random_reply(replies):
+    return random.choice(replies)
+
 if not TOKEN:
     raise RuntimeError("Chưa có TOKEN. Hãy đặt biến môi trường TOKEN.")
 
@@ -972,22 +975,103 @@ def get_love(guild_id):
 
 
 @bot.command()
-async def love(ctx, member: discord.Member | None = None):
-    member = member or ctx.author
-    await ctx.reply(f"💗 **SETL**\n{get_love(ctx.guild.id)}\n\n{ctx.author.mention} → {member.mention}")
+async def love(ctx, member: discord.Member):
+    if member.id == ctx.author.id:
+        replies = [
+            "💗 Tự yêu mình thì tốt, nhưng gọi Luna ra làm gì? Có người thương rồi mà giấu đúng không 🙄",
+            "☾ Ơ kìa, tự yêu mình á? Hay đang ngại không dám gọi tên người thương vậy 🤭",
+            "🥺 Không sao, chưa có ai thì mình yêu mình trước cũng được á nha ",
+            "♡ Tự yêu mình thế này thì Luna biết trêu sao đây ta…",
+            "☾ Hôm nay tự nhiên yêu bản thân dữ vậy… có chuyện gì đáng ngờ không ta? 👀",
+        ]
+     return await ctx.reply(random_reply(replies))
 
-
-async def action(ctx, verb, member):
     if member.bot:
-        return await ctx.reply("🤖 Không thực hiện tương tác này với bot.")
-    await ctx.reply(f"💗 {ctx.author.mention} **{verb}** {member.mention}")
+        replies = [
+            "Yêu bot á? Luna xin phép không duyệt đơn này nha 😅",
+            "Ơ… tự nhiên tỏ tình với Luna vậy? Luna ngại đó nha 🤭",
+            "☾ Luna ghi nhận tình cảm này… còn đáp lại thế nào thì để Luna suy nghĩ 🤭",
+            "🌙 Ủa? Hết người để yêu rồi nên quay sang yêu bot hả? 🙄",
+            "☾ Tỏ tình với Luna á? Tiêu chuẩn tụt đến mức này rồi sao 🤣",
+        ]
+    return await ctx.reply(random_reply(replies))
+
+        replies = [
+            f"💗 {ctx.author.mention} vừa thả một chút tình yêu về phía {member.mention}… "
+            f"🌙 {ctx.author.mention} ơi, thích {member.mention} đến mức phải gọi Luna ra làm chứng luôn à? 🤭",
+            f"🌙 {ctx.author.mention} khai thật đi, thích {member.mention} lâu chưa? 👀",
+            f"♡ {member.mention}, Luna nghĩ bạn nên để ý {ctx.author.mention} một chút đó 🤭",
+            f"🌙 {member.mention} ơi, có người đang để ý bạn kìa — {ctx.author.mention} đó 🤭",
+            f"🌙 Ơ kìa {ctx.author.mention}, hôm nay lại tìm đến {member.mention cơ à? 🤭",
+            f"🌙 {ctx.author.mention} chọn {member.mention} nhanh thế, Luna còn chưa kịp hóng mà 🤭",
+    ]
+  return await ctx.reply(random_reply(replies))
+
+@bot.command()
+async def hon(ctx, member: discord.Member):
+    if member.id == ctx.author.id:
+        return await ctx.reply(
+            "❌ Người này không thể nhận nụ hôn đâu nha."
+        )
+        
+    if member.bot:
+        return await ctx.reply(
+            "
+            
+
+    await ctx.reply(
+        f"💗 {ctx.author.mention} đã hôn {member.mention}."
+    )
 
 
-for _name, _verb in [("hon","hôn"),("xoadau","xoa đầu"),("tat","tát"),("om","ôm"),("be","bế"),("can","cắn")]:
-    async def _action_command(ctx, member: discord.Member, _v=_verb):
-        await action(ctx, _v, member)
-    _action_command.__name__ = _name
-    bot.command(name=_name)(_action_command)
+@bot.command()
+async def xoadau(ctx, member: discord.Member):
+    if member.id == ctx.author.id or member.bot:
+        return await ctx.reply("❌ Không thể xoa đầu tài khoản này.")
+
+    await ctx.reply(
+        f"🤍 {ctx.author.mention} đã xoa đầu {member.mention}."
+    )
+
+
+@bot.command()
+async def tat(ctx, member: discord.Member):
+    if member.id == ctx.author.id or member.bot:
+        return await ctx.reply("❌ Không thể dùng lệnh này với tài khoản này.")
+
+    await ctx.reply(
+        f"💢 {ctx.author.mention} đã tát nhẹ {member.mention}."
+    )
+
+
+@bot.command()
+async def om(ctx, member: discord.Member):
+    if member.id == ctx.author.id or member.bot:
+        return await ctx.reply("❌ Không thể ôm tài khoản này.")
+
+    await ctx.reply(
+        f"🫂 {ctx.author.mention} đã ôm {member.mention}."
+    )
+
+
+@bot.command()
+async def be(ctx, member: discord.Member):
+    if member.id == ctx.author.id or member.bot:
+        return await ctx.reply("❌ Không thể bế tài khoản này.")
+
+    await ctx.reply(
+        f"🫶 {ctx.author.mention} đã bế {member.mention}."
+    )
+
+
+@bot.command()
+async def can(ctx, member: discord.Member):
+    if member.id == ctx.author.id or member.bot:
+        return await ctx.reply("❌ Không thể dùng lệnh này với tài khoản này.")
+
+    await ctx.reply(
+        f"😳 {ctx.author.mention} đã cắn nhẹ {member.mention}."
+    )
 
 
 @bot.command()

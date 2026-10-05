@@ -185,6 +185,59 @@ def admin_only():
     return commands.check(predicate)
 
 
+def normalize_role_name(name: str) -> str:
+    name = name.lower()
+
+    for char in ["☾", "☽", "•", "・", "│", "┃", "「", "」", "︱", "━", "─", "✦", "✦"]:
+        name = name.replace(char, "")
+
+    return name.strip()
+
+
+def staff_or_admin():
+    async def predicate(ctx: commands.Context):
+
+        if is_admin_member(ctx.author):
+            return True
+
+        if not isinstance(ctx.author, discord.Member):
+            return False
+
+        for user_role in ctx.author.roles:
+            role_name = normalize_role_name(user_role.name)
+
+            if "staff" in role_name:
+                return True
+
+        return False
+
+    return commands.check(predicate)
+
+
+def staff_or_admin():
+    async def predicate(ctx: commands.Context):
+
+        # Admin / Manage Server
+        if is_admin_member(ctx.author):
+            return True
+
+        if not isinstance(ctx.author, discord.Member):
+            return False
+
+        # Tự tìm role Staff trong server hiện tại
+        for user_role in ctx.author.roles:
+
+            role_name = normalize_role_name(user_role.name)
+
+            # Nhận Staff / 𝑺𝒕𝒂𝒇𝒇
+            if "staff" in role_name:
+                return True
+
+        return False
+
+    return commands.check(predicate)
+
+
 def owner_only():
     async def predicate(ctx: commands.Context):
         return is_owner(ctx.author.id)
@@ -1117,67 +1170,39 @@ async def settings(ctx):
 # ROLE MANAGEMENT
 # ============================================================
 
-def staff_or_admin():
-    async def predicate(ctx: commands.Context):
-        # Admin / Manage Server
-        if is_admin_member(ctx.author):
-            return True
-
-        # Role Staff
-        return any(
-            role.name.lower() == "staff"
-            for role in ctx.author.roles
-        )
-
-    return commands.check(predicate)
-
-
 @bot.command(name="role")
 @staff_or_admin()
 async def role(ctx, member: discord.Member, *, role_name: str):
-    """
-    Thêm role cho thành viên.
-
-    Cú pháp:
-    l!role @user tên-role
-
-    Ví dụ:
-    l!role @lyyn partner
-    """
 
     role_name = role_name.strip()
 
-    # Tìm role theo tên, không phân biệt chữ hoa/chữ thường
+    # Tìm role theo tên trong server hiện tại
     role = discord.utils.find(
         lambda r: r.name.lower() == role_name.lower(),
         ctx.guild.roles
     )
 
-    # Không tìm thấy role
     if role is None:
         return await ctx.reply(
             f"❌ Không tìm thấy role **{role_name}**."
         )
 
-    # Không cho thêm @everyone
     if role.is_default():
         return await ctx.reply(
             "❌ Không thể thêm role @everyone."
         )
 
-    # Không cho quản lý role bot/integration
     if role.managed:
         return await ctx.reply(
-            "❌ Không thể quản lý role tích hợp hoặc role của bot."
+            "❌ Không thể quản lý role tích hợp/bot."
         )
 
-    # Kiểm tra role của Luna
+    # Role Luna phải cao hơn role muốn thêm
     if role >= ctx.guild.me.top_role:
         return await ctx.reply(
-            "❌ Role của Luna phải nằm **cao hơn role cần thêm**."
+            "❌ Role của Luna phải cao hơn role cần thêm."
         )
 
-    # User đã có role
     if role in member.roles:
         return await ctx.reply(
             f"❌ {member.mention} đã có {role.mention} rồi."
@@ -1201,8 +1226,8 @@ async def role(ctx, member: discord.Member, *, role_name: str):
     except discord.HTTPException:
         await ctx.reply(
             "❌ Discord từ chối thao tác, thử lại sau."
-    )
-        
+        )
+
 # ============================================================
 # GIVEAWAY — PERSISTENT ACROSS RESTARTS
 # ============================================================

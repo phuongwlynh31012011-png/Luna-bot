@@ -48,8 +48,7 @@ db.execute("PRAGMA foreign_keys=ON")
 
 
 def db_init():
-    db.executescript(
-        """
+    db.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             guild_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
@@ -75,14 +74,14 @@ def db_init():
             guild_id INTEGER NOT NULL,
             item_id INTEGER NOT NULL,
             quantity INTEGER NOT NULL DEFAULT 0,
-            PRIMARY KEY(user_id, guild_id, item_id)
+            PRIMARY KEY (user_id, guild_id, item_id)
         );
 
         CREATE TABLE IF NOT EXISTS warnings (
             guild_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
             count INTEGER NOT NULL DEFAULT 0,
-            PRIMARY KEY(guild_id, user_id)
+            PRIMARY KEY (guild_id, user_id)
         );
 
         CREATE TABLE IF NOT EXISTS warn_logs (
@@ -104,14 +103,14 @@ def db_init():
             user2 INTEGER NOT NULL,
             guild_id INTEGER NOT NULL,
             created_at INTEGER NOT NULL,
-            PRIMARY KEY(user1, user2, guild_id)
+            PRIMARY KEY (user1, user2, guild_id)
         );
 
         CREATE TABLE IF NOT EXISTS guild_config (
             guild_id INTEGER PRIMARY KEY,
             prefix TEXT NOT NULL DEFAULT 'l!',
             log_channel INTEGER,
-            autorole_id INTEGER, thật vui vì hôm nay bạn đã ghé qua đây. ♡\n\nHãy cứ thoải mái trò chuyện, tìm người chơi cùng, bật mic khi muốn, hay đơn giản là ngồi chill một chút dưới ánh trăng. ☾\n\nMong rằng từ một người xa lạ, bạn sẽ tìm thấy những người khiến mỗi lần online đều trở nên đáng mong chờ. ✦',
+            autorole_id INTEGER,
             autorole_enabled INTEGER NOT NULL DEFAULT 0,
             xp_enabled INTEGER NOT NULL DEFAULT 1
         );
@@ -129,10 +128,10 @@ def db_init():
         CREATE TABLE IF NOT EXISTS giveaway_entries (
             giveaway_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
-            PRIMARY KEY(giveaway_id, user_id)
+            PRIMARY KEY (giveaway_id, user_id)
         );
-        """
-    )
+    """)
+
     db.commit()
 
 

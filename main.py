@@ -604,8 +604,8 @@ class HelpView(discord.ui.View):
 async def send_help(target):
     e = embed(
         "☾ 𝐋𝐔𝐍𝐀 𝐂𝐎𝐑𝐄",
-        "Bot Discord hỗ trợ cộng đồng với các tính năng quản lý, giải trí và tiện ích khác."
-        "Prefix: `L!` `l!`"
+        "Bot Discord hỗ trợ cộng đồng với các tính năng quản lý, giải trí và tiện ích khác.\n"
+        "Prefix: `L!` `l!`\n\n"
         "✦ Chọn danh mục bên dưới để khám phá thêm."
     )
     if isinstance(target, commands.Context):

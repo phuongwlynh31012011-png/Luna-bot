@@ -525,6 +525,7 @@ CATEGORIES = {
         "`l!om @user` — ôm",
         "`l!be @user` — bế",
         "`l!can @user` — cắn",
+        "`l!marriage [@user]` — xem thông tin hôn nhân",
         "`l!kethon @user` — kết hôn",
         "`l!lyhon @user` — ly hôn",
     ]),
@@ -602,10 +603,10 @@ class HelpView(discord.ui.View):
 
 async def send_help(target):
     e = embed(
-        "🌙 • LUNA",
-        "Luna hỗ trợ quản lý server, economy, game, level và các tiện ích.\n\n"
-        "💡 Chọn danh mục bên dưới để xem lệnh.\n"
-        "Prefix: `l!`"
+        "☾ 𝐋𝐔𝐍𝐀 𝐂𝐎𝐑𝐄",
+        "Bot Discord hỗ trợ cộng đồng với các tính năng quản lý, giải trí và tiện ích khác."
+        "Prefix: `L!` `l!`"
+        "✦ Chọn danh mục bên dưới để khám phá thêm."
     )
     if isinstance(target, commands.Context):
         await target.reply(embed=e, view=HelpView())

@@ -142,18 +142,23 @@ db_init()
 
 # Migrate older Luna databases without deleting existing data.
 def db_migrate():
-    columns = {row["name"] for row in db.execute("PRAGMA table_info(guild_config)").fetchall()}
-    additions = {}
-    for name, definition in additions.items():
-        if name not in columns:
-            db.execute(f"ALTER TABLE guild_config ADD COLUMN {name} {definition}")
+    # Kiểm tra cột của bảng marriages
+    marriage_columns = {
+        row["name"]
+        for row in db.execute(
+            "PRAGMA table_info(marriages)"
+        ).fetchall()
+    }
 
-if "intimacy" not in marriage_columns:
-    db.execute(
-        "ALTER TABLE marriages ADD COLUMN intimacy INTEGER NOT NULL DEFAULT 0"
-    )
+    # Database cũ chưa có intimacy thì thêm vào
+    if "intimacy" not in marriage_columns:
+        db.execute(
+            "ALTER TABLE marriages "
+            "ADD COLUMN intimacy INTEGER NOT NULL DEFAULT 0"
+        )
 
-db.commit()
+    db.commit()
+
 
 db_migrate()
         

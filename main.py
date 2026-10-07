@@ -1171,9 +1171,9 @@ async def xoadau(ctx, member: discord.Member):
             f"☾ {ctx.author.mention} à, xoa đầu Luna cũng không làm bạn hết ế đâu nha \U0001F92D",
             f"🌙 Được xoa đầu thì Luna vui rồi… còn {ctx.author.mention} thì sao? Vẫn cô đơn à? \U0001F644",
             f"☾ Xoa đầu Luna xong thì đừng lủi đi nha. Ngồi đây một chút, Luna không để bạn cô đơn đâu. \U0001F92D",
-       ]
+        ]
 
-       return await ctx.reply(random_reply(replies))
+        return await ctx.reply(random_reply(replies))
 
     add_intimacy(
         ctx.author.id,

@@ -1234,7 +1234,140 @@ async def can(ctx, member: discord.Member):
     ]
 
     return await ctx.reply(random.choice(replies))
-    
+
+
+class MarriageView(discord.ui.View):
+    def __init__(self, proposer_id: int, target_id: int):
+        super().__init__(timeout=120)
+        self.proposer_id = proposer_id
+        self.target_id = target_id
+        self.done = False
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction
+    ) -> bool:
+
+        if interaction.user.id != self.target_id:
+            await interaction.response.send_message(
+                "❌ Chỉ người được cầu hôn mới có thể chọn.",
+                ephemeral=True
+            )
+            return False
+
+        if self.done:
+            await interaction.response.send_message(
+                "❌ Lời cầu hôn này đã được xử lý.",
+                ephemeral=True
+            )
+            return False
+
+        return True
+
+    @discord.ui.button(
+        label="Đồng ý",
+        emoji="💍",
+        style=discord.ButtonStyle.success
+    )
+    async def accept(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        self.done = True
+
+        proposer_married = db.execute(
+            """
+            SELECT 1
+            FROM marriages
+            WHERE user1 = ?
+            OR user2 = ?
+            """,
+            (self.proposer_id, self.proposer_id)
+        ).fetchone()
+
+        target_married = db.execute(
+            """
+            SELECT 1
+            FROM marriages
+            WHERE user1 = ?
+            OR user2 = ?
+            """,
+            (self.target_id, self.target_id)
+        ).fetchone()
+
+        if proposer_married or target_married:
+            for item in self.children:
+                item.disabled = True
+
+            await interaction.response.edit_message(
+                content=(
+                    "❌💍 Không thể kết hôn vì một trong hai người "
+                    "đã kết hôn."
+                ),
+                view=self
+            )
+            return
+
+        user1 = min(
+            self.proposer_id,
+            self.target_id
+        )
+
+        user2 = max(
+            self.proposer_id,
+            self.target_id
+        )
+
+        db.execute(
+            """
+            INSERT INTO marriages
+            (user1, user2, created_at, intimacy)
+            VALUES (?, ?, ?, 0)
+            """,
+            (
+                user1,
+                user2,
+                int(time.time())
+            )
+        )
+
+        db.commit()
+
+        for item in self.children:
+            item.disabled = True
+
+        await interaction.response.edit_message(
+            content=(
+                f"💍 **Kết hôn thành công!**\n\n"
+                f"<@{self.proposer_id}> và "
+                f"<@{self.target_id}> đã chính thức kết hôn."
+            ),
+            view=self
+        )
+
+    @discord.ui.button(
+        label="Từ chối",
+        emoji="❌",
+        style=discord.ButtonStyle.danger
+    )
+    async def reject(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        self.done = True
+
+        for item in self.children:
+            item.disabled = True
+
+        await interaction.response.edit_message(
+            content=(
+                f"❌ <@{self.target_id}> đã từ chối lời cầu hôn "
+                f"của <@{self.proposer_id}>."
+            ),
+            view=self
+            )
             
 @bot.command()
 async def kethon(ctx, member: discord.Member):
@@ -1523,16 +1656,63 @@ async def unlock(ctx):
 @admin_only()
 async def settings(ctx):
     cfg = get_config(ctx.guild.id)
-    def ch(cid):
-        return f"<#{cid}>" if cid else "Chưa đặt"
-    def role(rid):
-        return f"<@&{rid}>" if rid else "Chưa đặt"
-    await ctx.reply(embed=embed("⚙️ Cấu hình Luna",
-        f"📋 Log: {ch(cfg['log_channel'])}\n"
-        f"🎭 Autorole: {'Bật' if cfg['autorole_enabled'] else 'Tắt'} • {role(cfg['autorole_id'])}\n"
-        f"✨ XP: {'Bật' if cfg['xp_enabled'] else 'Tắt'}"
-    ))
 
+    log_channel = (
+        f"<#{cfg['log_channel']}>"
+        if cfg["log_channel"]
+        else "Chưa đặt"
+    )
+
+    xp_status = "Bật" if cfg["xp_enabled"] else "Tắt"
+
+    await ctx.reply(
+        embed=embed(
+            "⚙️ CẤU HÌNH LUNA",
+            f"📋 Log: {log_channel}\n"
+            f"✨ XP: **{xp_status}**"
+        )
+    )
+
+
+@bot.command()
+@admin_only()
+async def setlog(ctx, channel: discord.TextChannel):
+    update_config(
+        ctx.guild.id,
+        "log_channel",
+        channel.id
+    )
+
+    await ctx.reply(
+        f"✅ Đã đặt kênh log thành {channel.mention}."
+    )
+
+
+@bot.command()
+@admin_only()
+async def xp(ctx, mode: str):
+    mode = mode.lower().strip()
+
+    if mode not in ("on", "off"):
+        return await ctx.reply(
+            "❌ Dùng đúng cú pháp:\n"
+            "`l!xp on` — bật XP\n"
+            "`l!xp off` — tắt XP"
+        )
+
+    enabled = 1 if mode == "on" else 0
+
+    update_config(
+        ctx.guild.id,
+        "xp_enabled",
+        enabled
+    )
+
+    if enabled:
+        await ctx.reply("✅ Đã **bật hệ thống XP**.")
+    else:
+        await ctx.reply("🔴 Đã **tắt hệ thống XP**.")
+        
 # ============================================================
 # ROLE MANAGEMENT
 # ============================================================

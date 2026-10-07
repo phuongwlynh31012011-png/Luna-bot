@@ -1047,49 +1047,49 @@ async def love(ctx, member: discord.Member):
 
     if member.id == ctx.author.id:
         replies = [
-            "🌙 Ủa? Yêu chính mình luôn hả? Người yêu đâu rồi? 🫣",
-            "💗 Một mối tình bền vững: bạn × chính bạn. 🤭",
-            "💀 Cupid nhìn thấy bạn chắc cũng xin nghỉ phép.",
-            "☾ Luna hiểu rồi… không có ai nên tự yêu mình trước đúng không? 🤭",
-            "☾ Một tình yêu rất an toàn… vì đối phương lúc nào cũng ở bên mình 🤭",
-            "🌙 Tự yêu mình thì tốt, nhưng gọi Luna ra làm gì? Có người thương rồi mà giấu đúng không 🙄",
-            "☾ Ơ kìa, tự yêu mình á? Hay đang ngại không dám gọi tên người thương vậy 🤭",
-            "☾ Khai thật đi, người thương đâu? Đừng để Luna phải điều tra nha 🤨",
-            "👀 Tự tỏ tình với mình luôn à? Luna chịu rồi đó 😭",
+            "🌙 Ủa? Yêu chính mình luôn hả? Người yêu đâu rồi? \U0001FAE3",
+            "\U0001F497 Một mối tình bền vững: bạn × chính bạn. \U0001F92D",
+            "\U0001F480 Cupid nhìn thấy bạn chắc cũng xin nghỉ phép.",
+            "☾ Luna hiểu rồi… không có ai nên tự yêu mình trước đúng không? \U0001F92D",
+            "☾ Một tình yêu rất an toàn… vì đối phương lúc nào cũng ở bên mình \U0001F92D",
+            "🌙 Tự yêu mình thì tốt, nhưng gọi Luna ra làm gì? Có người thương rồi mà giấu đúng không \U0001F644",
+            "☾ Ơ kìa, tự yêu mình á? Hay đang ngại không dám gọi tên người thương vậy \U0001F92D",
+            "☾ Khai thật đi, người thương đâu? Đừng để Luna phải điều tra nha \U0001F928",
+            "\U0001F440 Tự tỏ tình với mình luôn à? Luna chịu rồi đó \U0001F62D",
         ]
         return await ctx.reply(random.choice(replies))
 
     if member.bot:
         replies = [
-            "🌙 Ủa? Hết người để yêu rồi nên quay sang yêu bot hả? 🙄",
-            "☾ Tỏ tình với Luna á? Tiêu chuẩn tụt đến mức này rồi sao 🤭",
-            "☾ Luna ghi nhận tình cảm này… còn đáp lại thế nào thì để Luna suy nghĩ 🤭",
+            "🌙 Ủa? Hết người để yêu rồi nên quay sang yêu bot hả? \U0001F644",
+            "☾ Tỏ tình với Luna á? Tiêu chuẩn tụt đến mức này rồi sao \U0001F92D",
+            "☾ Luna ghi nhận tình cảm này… còn đáp lại thế nào thì để Luna suy nghĩ \U0001F92D",
             "♡ Luna nhận được tình yêu rồi nha, cảm ơn bạn nhiều 🌙",
-            "🌙 Ơ… tự nhiên tỏ tình với Luna vậy? Luna ngại đó nha 🤭",
-            "☾ Khoan đã… bạn đang `l!love` Luna thật đó hả? 👀",
+            "🌙 Ơ… tự nhiên tỏ tình với Luna vậy? Luna ngại đó nha \U0001F92D",
+            "☾ Khoan đã… bạn đang `l!love` Luna thật đó hả? \U0001F440",
             "🌙 Luna biết mình đáng yêu, nhưng tỏ tình thẳng vậy Luna bất ngờ nha 🙈",
-            "♡ Ủa? Luna vừa làm gì mà được yêu vậy nè? 🤭",
-            "☾ Hình như hôm nay Luna có người thương rồi thì phải… 👀",
+            "♡ Ủa? Luna vừa làm gì mà được yêu vậy nè? \U0001F92D",
+            "☾ Hình như hôm nay Luna có người thương rồi thì phải… \U0001F440",
         ]
         return await ctx.reply(random.choice(replies))
 
     replies = [
-        "🌙 Ồ… hôm nay công khai người thương luôn rồi à? 👀",
-        "☾ Ghê nha, Luna vừa quay đi một cái là có người thương liền 🤭",
-        "🌙 Ủa? Nhanh vậy? Luna còn chưa kịp biết chuyện mà 🙄",
-        "♡ Hai người có gì với nhau mà để Luna bắt gặp thế này? 👀",
-        "☾ Luna thấy hết nha… đừng có giả vờ không có gì 🤭",
-        "🌙 Àaa, thì ra đây là người bạn hay giấu đó hả? 🙄",
-        "☾ Khai thật đi, thích người ta lâu chưa? 🤨",
-        f"☾ {ctx.author.mention} ơi, công khai thích {member.mention} luôn rồi à? 👀",
-        f"🌙 {member.mention} ơi, có người đang để ý bạn kìa — {ctx.author.mention} đó 🤭",
-        f"♡ {ctx.author.mention} → {member.mention} : Luna thấy hết rồi nha 🙄",
-        f"🌙 {ctx.author.mention} ơi, thích {member.mention} đến mức phải gọi Luna ra làm chứng luôn à? 🤭",
-        f"☾ Ồ, {ctx.author.mention} công khai thích {member.mention} rồi nha 👀",
-        f"🌙 {member.mention} ơi, có người đang để ý bạn kìa — {ctx.author.mention} đó 🤭",
-        f"♡ {ctx.author.mention} → {member.mention}... Luna thấy có mùi tình yêu nha 🙄",
-        f"🌙 {ctx.author.mention} khai thật đi, thích {member.mention} lâu chưa? 👀",
-        f"♡ {member.mention}, Luna nghĩ bạn nên để ý {ctx.author.mention} một chút đó 🤭",
+        "🌙 Ồ… hôm nay công khai người thương luôn rồi à? \U0001F440",
+        "☾ Ghê nha, Luna vừa quay đi một cái là có người thương liền \U0001F92D",
+        "🌙 Ủa? Nhanh vậy? Luna còn chưa kịp biết chuyện mà \U0001F644",
+        "♡ Hai người có gì với nhau mà để Luna bắt gặp thế này? \U0001F440",
+        "☾ Luna thấy hết nha… đừng có giả vờ không có gì \U0001F92D",
+        "🌙 Àaa, thì ra đây là người bạn hay giấu đó hả? \U0001F644",
+        "☾ Khai thật đi, thích người ta lâu chưa? \U0001F928",
+        f"☾ {ctx.author.mention} ơi, công khai thích {member.mention} luôn rồi à? \U0001F440",
+        f"🌙 {member.mention} ơi, có người đang để ý bạn kìa — {ctx.author.mention} đó \U0001F92D",
+        f"♡ {ctx.author.mention} → {member.mention} : Luna thấy hết rồi nha \U0001F644",
+        f"🌙 {ctx.author.mention} ơi, thích {member.mention} đến mức phải gọi Luna ra làm chứng luôn à? \U0001F92D",
+        f"☾ Ồ, {ctx.author.mention} công khai thích {member.mention} rồi nha \U0001F440",
+        f"🌙 {member.mention} ơi, có người đang để ý bạn kìa — {ctx.author.mention} đó \U0001F92D",
+        f"♡ {ctx.author.mention} → {member.mention}... Luna thấy có mùi tình yêu nha \U0001F644",
+        f"🌙 {ctx.author.mention} khai thật đi, thích {member.mention} lâu chưa? \U0001F440",
+        f"♡ {member.mention}, Luna nghĩ bạn nên để ý {ctx.author.mention} một chút đó \U0001F92D",
     ]
 
     return await ctx.reply(random.choice(replies))
@@ -1099,28 +1099,28 @@ async def hon(ctx, member: discord.Member):
 
     if member.id == ctx.author.id:
         replies = [
-            f"🌙 {ctx.author.mention} tự hôn mình luôn á? Tự tin dữ nha 🤭",
-            f"☾ Ơ kìa {ctx.author.mention}, người yêu đâu mà phải tự hôn vậy? 🙄",
-            f"🌙 {ctx.author.mention} tự hôn mình… Luna không biết nên cười hay vỗ tay nữa 🤭",
-            f"♡ Tự hôn mình cũng được, ít nhất chắc chắn không bị từ chối 😌",
-            f"☾ {ctx.author.mention} ơi, Luna nghĩ bạn đang thiếu người để hôn rồi đó 🤭",
-            f"🌙 Hình như {ctx.author.mention} đang tự chăm sóc đời sống tình cảm của mình thì phải 👀",
-            f"☾ Tự hôn luôn? Luna thấy tình hình hơi đáng yêu rồi nha 🤭",
-            f"🌙 {ctx.author.mention} tự hôn mình mà Luna cũng phải làm nhân chứng luôn hả? 😭",
+            f"🌙 {ctx.author.mention} tự hôn mình luôn á? Tự tin dữ nha \U0001F92D",
+            f"☾ Ơ kìa {ctx.author.mention}, người yêu đâu mà phải tự hôn vậy? \U0001F644",
+            f"🌙 {ctx.author.mention} tự hôn mình… Luna không biết nên cười hay vỗ tay nữa \U0001F92D",
+            f"♡ Tự hôn mình cũng được, ít nhất chắc chắn không bị từ chối \U0001F614",
+            f"☾ {ctx.author.mention} ơi, Luna nghĩ bạn đang thiếu người để hôn rồi đó \U0001F92D",
+            f"🌙 Hình như {ctx.author.mention} đang tự chăm sóc đời sống tình cảm của mình thì phải \U0001F440",
+            f"☾ Tự hôn luôn? Luna thấy tình hình hơi đáng yêu rồi nha \U0001F92D",
+            f"🌙 {ctx.author.mention} tự hôn mình mà Luna cũng phải làm nhân chứng luôn hả? \U0001F62D",
         ]
 
         return await ctx.reply(random_reply(replies))
     
     if member.bot:
         replies = [
-            f"🌙 {ctx.author.mention} định hôn Luna thật á? Gan ghê nha 🤭",
-            f"☾ Khoan nha {ctx.author.mention}, Luna chỉ là bot thôi đó 🙄",
-            f"🌙 {ctx.author.mention} ơi, hôn bot cũng không được tính đâu nha 🤭",
-            f"☾ Ơ kìa {ctx.author.mention}, tự nhiên lại muốn hôn Luna vậy? 👀",
-            f"🌙 Luna thấy hết nha {ctx.author.mention}, tính làm gì đó? 🤨",     
-            f"♡ {ctx.author.mention} gan thật, dám hôn cả Luna luôn 🤭",
-            f"☾ Luna không có má đâu mà hôn nha 😌",
-            f"🌙 Hôn Luna á? Bạn đang coi Luna là người yêu thật rồi đó 🙄",
+            f"🌙 {ctx.author.mention} định hôn Luna thật á? Gan ghê nha \U0001F92D",
+            f"☾ Khoan nha {ctx.author.mention}, Luna chỉ là bot thôi đó \U0001F644",
+            f"🌙 {ctx.author.mention} ơi, hôn bot cũng không được tính đâu nha \U0001F92D",
+            f"☾ Ơ kìa {ctx.author.mention}, tự nhiên lại muốn hôn Luna vậy? \U0001F440",
+            f"🌙 Luna thấy hết nha {ctx.author.mention}, tính làm gì đó? \U0001F928",     
+            f"♡ {ctx.author.mention} gan thật, dám hôn cả Luna luôn \U0001F92D",
+            f"☾ Luna không có má đâu mà hôn nha \U0001F614",
+            f"🌙 Hôn Luna á? Bạn đang coi Luna là người yêu thật rồi đó \U0001F644",
         ]
 
         return await ctx.reply(random_reply(replies))
@@ -1132,14 +1132,14 @@ async def hon(ctx, member: discord.Member):
     )
 
     replies = [
-        f"🌙 {member.mention} ơi, có người vừa lén hôn bạn kìa 🤭",
-        f"🌙 {member.mention} ơi, vừa có người tranh thủ hôn bạn kìa 👀",
-        f"☾ Luna quay đi có một chút mà {ctx.author.mention} đã hôn {member.mention rồi 🤭",
-        f"🌙 Nhanh dữ nha {ctx.author.mention}, {member.mention} còn chưa kịp chuẩn bị luôn đó 🤭",
-        f"♡ {ctx.author.mention} ơi, hôn người ta mà không báo Luna là sao? 🙄",
-        f"☾ Luna thấy hết nha… {ctx.author.mention} vừa lén hôn {member.mention đó 👀",
-        f"🌙 Ồ, hôm nay {ctx.author.mention} chủ động dữ ha… {member.mention} có biết chưa? 🤭",
-        f"🌙 {ctx.author.mention} định hôn một cái rồi giả vờ như chưa có gì đúng không? 🤭",
+        f"🌙 {member.mention} ơi, có người vừa lén hôn bạn kìa \U0001F92D",
+        f"🌙 {member.mention} ơi, vừa có người tranh thủ hôn bạn kìa \U0001F440",
+        f"☾ Luna quay đi có một chút mà {ctx.author.mention} đã hôn {member.mention rồi \U0001F92D",
+        f"🌙 Nhanh dữ nha {ctx.author.mention}, {member.mention} còn chưa kịp chuẩn bị luôn đó \U0001F92D",
+        f"♡ {ctx.author.mention} ơi, hôn người ta mà không báo Luna là sao? \U0001F644",
+        f"☾ Luna thấy hết nha… {ctx.author.mention} vừa lén hôn {member.mention đó \U0001F440",
+        f"🌙 Ồ, hôm nay {ctx.author.mention} chủ động dữ ha… {member.mention} có biết chưa? \U0001F92D",
+        f"🌙 {ctx.author.mention} định hôn một cái rồi giả vờ như chưa có gì đúng không? \U0001F92D",
     ]
     
     return await ctx.reply(random.choice(replies))
@@ -1149,28 +1149,28 @@ async def xoadau(ctx, member: discord.Member):
 
     if member.id == ctx.author.id:
         replies = [
-            f"🌙 {ctx.author.mention} tự xoa đầu mình luôn à? Hôm nay thiếu người chăm rồi hả? 🤭",
-            f"☾ Ủa, {ctx.author.mention} tự xoa đầu mình á? Ai bỏ bạn một mình vậy? 🙄",
-            f"🌙 Tự xoa đầu luôn… bộ không ai chịu xoa cho hả? 🤭",
-            f"☾ {ctx.author.mention} tự chăm mình luôn kìa, Luna thấy cũng tội tội nha 😌",
-            f"🌙 Không có ai xoa đầu nên tự làm luôn à? Khôn ghê 🤭",
-            f"☾ Tự xoa đầu mình mà cũng cần Luna chứng kiến nữa hả? 🙄",
-            f"🌙 Nhìn cảnh tự xoa đầu mà Luna không biết nên cười hay thương nữa 🤭",
-            f"☾ Ồ, tự xoa đầu mình… xem ra hôm nay hơi thiếu người quan tâm nha 👀",
+            f"🌙 {ctx.author.mention} tự xoa đầu mình luôn à? Hôm nay thiếu người chăm rồi hả? \U0001F92D",
+            f"☾ Ủa, {ctx.author.mention} tự xoa đầu mình á? Ai bỏ bạn một mình vậy? \U0001F644",
+            f"🌙 Tự xoa đầu luôn… bộ không ai chịu xoa cho hả? \U0001F92D",
+            f"☾ {ctx.author.mention} tự chăm mình luôn kìa, Luna thấy cũng tội tội nha \U0001F614",
+            f"🌙 Không có ai xoa đầu nên tự làm luôn à? Khôn ghê \U0001F92D",
+            f"☾ Tự xoa đầu mình mà cũng cần Luna chứng kiến nữa hả? \U0001F644",
+            f"🌙 Nhìn cảnh tự xoa đầu mà Luna không biết nên cười hay thương nữa \U0001F92D",
+            f"☾ Ồ, tự xoa đầu mình… xem ra hôm nay hơi thiếu người quan tâm nha \U0001F440",
         ]
 
         return await ctx.reply(random_reply(replies))
     
     if member.bot:
         replies = [
-            f"🌙 Cô đơn quá nên mới tìm Luna xoa đầu đúng không? 🤭",
-            f"☾ Ủa, {ctx.author.mention} không có ai để xoa đầu nên phải chạy tới Luna à? 🙄",
-            f"🌙 Dễ chịu ghê… nhưng Luna nghi {ctx.author.mention} đang thiếu người quan tâm đó nha 🤭",
-            f"☾ Cảm ơn vì đã xoa đầu Luna nha… mà nhìn bạn cô đơn quá, Luna thấy hơi tội 🤭",
-            f"🌙 Xoa đầu Luna để đỡ cô đơn hả {ctx.author.mention}? Luna bắt bài rồi nha 👀",
-            f"☾ {ctx.author.mention} à, xoa đầu Luna cũng không làm bạn hết ế đâu nha 🤭",
-            f"🌙 Được xoa đầu thì Luna vui rồi… còn {ctx.author.mention} thì sao? Vẫn cô đơn à? 🙄🤭",
-            f"☾ Xoa đầu Luna xong thì đừng lủi đi nha 🤭 Ngồi đây một chút, Luna không để bạn cô đơn đâu.",
+            f"🌙 Cô đơn quá nên mới tìm Luna xoa đầu đúng không? \U0001F92D",
+            f"☾ Ủa, {ctx.author.mention} không có ai để xoa đầu nên phải chạy tới Luna à? \U0001F644",
+            f"🌙 Dễ chịu ghê… nhưng Luna nghi {ctx.author.mention} đang thiếu người quan tâm đó nha \U0001F92D",
+            f"☾ Cảm ơn vì đã xoa đầu Luna nha… mà nhìn bạn cô đơn quá, Luna thấy hơi tội \U0001F92D",
+            f"🌙 Xoa đầu Luna để đỡ cô đơn hả {ctx.author.mention}? Luna bắt bài rồi nha \U0001F440",
+            f"☾ {ctx.author.mention} à, xoa đầu Luna cũng không làm bạn hết ế đâu nha \U0001F92D",
+            f"🌙 Được xoa đầu thì Luna vui rồi… còn {ctx.author.mention} thì sao? Vẫn cô đơn à? \U0001F644",
+            f"☾ Xoa đầu Luna xong thì đừng lủi đi nha. Ngồi đây một chút, Luna không để bạn cô đơn đâu. \U0001F92D",
        ]
 
        return await ctx.reply(random_reply(replies))
@@ -1202,40 +1202,40 @@ async def tat(ctx, member: discord.Member):
 
     if member.id == ctx.author.id:
         replies = [
-            f"{ctx.author.mention} tự tát mình một cái. Ủa, tự xử luôn hả? 🤭",
-            f"{ctx.author.mention} tự tát mình. Bình tĩnh nào, sao tự nhiên mạnh tay với bản thân vậy? 🙄",
-            f"{ctx.author.mention} tự tát mình một cái. Luna chưa kịp làm gì mà bạn đã tự làm trước rồi 😭",
-            f"{ctx.author.mention} tự tát mình. Ơ kìa, ai cho phép tự bắt nạt mình vậy? 🤨",
-            f"{ctx.author.mention} tự tát nhẹ mình một cái. Được rồi, tỉnh chưa nè? 🤭",
-            f"{ctx.author.mention} tự tát mình. Hôm nay có vẻ hơi cần được dỗ dành rồi đó nha 🌙",
+            f"{ctx.author.mention} tự tát mình một cái. Ủa, tự xử luôn hả? \U0001F92D",
+            f"{ctx.author.mention} tự tát mình. Bình tĩnh nào, sao tự nhiên mạnh tay với bản thân vậy? \U0001F644",
+            f"{ctx.author.mention} tự tát mình một cái. Luna chưa kịp làm gì mà bạn đã tự làm trước rồi \U0001F62D",
+            f"{ctx.author.mention} tự tát mình. Ơ kìa, ai cho phép tự bắt nạt mình vậy? \U0001F928",
+            f"{ctx.author.mention} tự tát nhẹ mình một cái. Được rồi, tỉnh chưa nè? \U0001F92D",
+            f"{ctx.author.mention} tự tát mình. Hôm nay có vẻ hơi cần được dỗ dành rồi đó nha \U0001F92D",
         ]
         
         return await ctx.reply(random.choice(replies))
 
     if member.bot:
         replies = [
-            f"{ctx.author.mention} tát Luna một cái. Ơ kìa… Luna có làm gì đâu mà nỡ mạnh tay vậy 🥺",
-            f"{ctx.author.mention} vừa tát Luna. Ủa? Mới yên ổn được bao lâu mà đã bị bắt nạt rồi 😭",
-            f"{ctx.author.mention} tát Luna. Gan ghê nha… lát đừng quay lại xin Luna dỗ đó 🤭",
-            f"{ctx.author.mention} tát Luna một cái. Được rồi… Luna nhớ mặt bạn rồi nha 🙄",
-            f"{ctx.author.mention} vừa tát Luna. Luna ghi nhớ cú này… rất rõ luôn đó 👀",
-            f"*{ctx.author.mention} tát Luna. Đau nha… nhưng Luna sẽ giả vờ chưa có chuyện gì 😌",
-            f"{ctx.author.mention} tát Luna một cái. Ồ, hôm nay mạnh tay dữ ha? Luna hơi bất ngờ đó 🤨",
-            f"{ctx.author.mention} vừa tát Luna. Thôi được, Luna cho qua… lần này thôi nha 🤭",
+            f"{ctx.author.mention} tát Luna một cái. Ơ kìa… Luna có làm gì đâu mà nỡ mạnh tay vậy U0001F979",
+            f"{ctx.author.mention} vừa tát Luna. Ủa? Mới yên ổn được bao lâu mà đã bị bắt nạt rồi \U0001F62D",
+            f"{ctx.author.mention} tát Luna. Gan ghê nha… lát đừng quay lại xin Luna dỗ đó \U0001F92D",
+            f"{ctx.author.mention} tát Luna một cái. Được rồi… Luna nhớ mặt bạn rồi nha \U0001F644",
+            f"{ctx.author.mention} vừa tát Luna. Luna ghi nhớ cú này… rất rõ luôn đó \U0001F440",
+            f"*{ctx.author.mention} tát Luna. Đau nha… nhưng Luna sẽ giả vờ chưa có chuyện gì \U0001F614",
+            f"{ctx.author.mention} tát Luna một cái. Ồ, hôm nay mạnh tay dữ ha? Luna hơi bất ngờ đó \U0001F928",
+            f"{ctx.author.mention} vừa tát Luna. Thôi được, Luna cho qua… lần này thôi nha \U0001F92D",
         ]
         
         return await ctx.reply(random.choice(replies))
 
     replies = [
-        f"*{ctx.author.mention} tát nhẹ {member.mention} một cái.* Đùa thôi nha, đừng giận 🤭",
+        f"*{ctx.author.mention} tát nhẹ {member.mention} một cái.* Đùa thôi nha, đừng giận \U0001F92D",
         f"*{ctx.author.mention} khẽ tát {member.mention} một cái.* Thôi nào, đùa chút thôi, đừng giận nha ♡",
-        f"*{ctx.author.mention} tát nhẹ {member.mention} một cái rồi cười.* Đùa thôi mà, đừng giận nhé 🤭",
-        f"*{ctx.author.mention} khẽ tát {member.mention} một cái.* Nè, đùa xíu thôi đó, đừng có giận nha 😭",
+        f"*{ctx.author.mention} tát nhẹ {member.mention} một cái rồi cười.* Đùa thôi mà, đừng giận nhé \U0001F92D",
+        f"*{ctx.author.mention} khẽ tát {member.mention} một cái.* Nè, đùa xíu thôi đó, đừng có giận nha \U0001F62D",
         f"*{ctx.author.mention} tát nhẹ {member.mention} một cái rồi nhanh chóng làm hòa.* Đùa thôi nha ♡",
-        f"*{ctx.author.mention} tát nhẹ {member.mention} một cái.* Không đau đâu nha, Luna đảm bảo… đùa thôi 🤭",
-        f"*{ctx.author.mention} tát nhẹ {member.mention} một cái.* *{member.mention} đang tải phản ứng… 12%* 😭"
-        f"*{ctx.author.mention} khẽ tát {member.mention}.* *{member.mention} đứng hình, não tạm thời ngừng hoạt động.* 🤨"
-        f"*{ctx.author.mention} khẽ tát {member.mention}.* *{member.mention} nhìn lại với ánh mắt: “Ủa gì vậy?”* 🤨",
+        f"*{ctx.author.mention} tát nhẹ {member.mention} một cái.* Không đau đâu nha, Luna đảm bảo… đùa thôi \U0001F92D",
+        f"*{ctx.author.mention} tát nhẹ {member.mention} một cái.* *{member.mention} đang tải phản ứng… 12%* \U0001F62D"
+        f"*{ctx.author.mention} khẽ tát {member.mention}.* *{member.mention} đứng hình, não tạm thời ngừng hoạt động.* \U0001F928"
+        f"*{ctx.author.mention} khẽ tát {member.mention}.* *{member.mention} nhìn lại với ánh mắt: “Ủa gì vậy?”* \U0001F928",
         f"*{ctx.author.mention} khẽ tát {member.mention}.* *{member.mention} mất kết nối với máy chủ trong giây lát.* ",
     ]
     
@@ -1247,23 +1247,23 @@ async def om(ctx, member: discord.Member):
 
     if member.id == ctx.author.id:
         replies = [
-            f"*{ctx.author.mention} tự ôm lấy mình.* Ủa, cô đơn tới mức này rồi hả? 🤭",
-            f"*{ctx.author.mention} tự ôm mình một cái.* Không có ai ôm nên tự xử luôn à? 😭",
-            f"*{ctx.author.mention} tự ôm lấy bản thân.* Luna thấy cũng hơi tội nha 🤭",
+            f"*{ctx.author.mention} tự ôm lấy mình.* Ủa, cô đơn tới mức này rồi hả? \U0001F92D",
+            f"*{ctx.author.mention} tự ôm mình một cái.* Không có ai ôm nên tự xử luôn à? \U0001F62D",
+            f"*{ctx.author.mention} tự ôm lấy bản thân.* Luna thấy cũng hơi tội nha \U0001F92D",
             f"*{ctx.author.mention} ôm chính mình.* Ít nhất vẫn còn bản thân ở bên mình ha 🌙",
-            f"*{ctx.author.mention} tự ôm mình thật chặt.* Ngoan, tự an ủi mình cũng được mà 🤍",
-            f"*{ctx.author.mention} tự ôm lấy mình.* Hôm nay thiếu người ôm rồi đúng không? 👀",
-            f"*{ctx.author.mention} tự ôm mình một cái.* Thôi nào, cô đơn cũng phải đáng yêu như này à? 🤭",
-            f"*{ctx.author.mention} tự ôm lấy mình.* Không ai ôm nên tự làm luôn, chuyên nghiệp ghê 🤭"
+            f"*{ctx.author.mention} tự ôm mình thật chặt.* Ngoan, tự an ủi mình cũng được mà \U0001F90D",
+            f"*{ctx.author.mention} tự ôm lấy mình.* Hôm nay thiếu người ôm rồi đúng không? \U0001F440",
+            f"*{ctx.author.mention} tự ôm mình một cái.* Thôi nào, cô đơn cũng phải đáng yêu như này à? \U0001F92D",
+            f"*{ctx.author.mention} tự ôm lấy mình.* Không ai ôm nên tự làm luôn, chuyên nghiệp ghê \U0001F92D",
         ]
     if member.bot:
         replies = [
-            f"*{ctx.author.mention} ôm Luna một cái.* Ơ… tự nhiên ôm Luna vậy? 🤭",
-            f"*{ctx.author.mention} ôm Luna.* Luna nhận nha… nhưng ôm lâu quá là tính phí đó 🙄",
-            f"*{ctx.author.mention} ôm Luna thật chặt.* Ủa, cô đơn tới mức phải tìm bot để ôm hả? 🤭",
+            f"*{ctx.author.mention} ôm Luna một cái.* Ơ… tự nhiên ôm Luna vậy? \U0001F92D",
+            f"*{ctx.author.mention} ôm Luna.* Luna nhận nha… nhưng ôm lâu quá là tính phí đó \U0001F644",
+            f"*{ctx.author.mention} ôm Luna thật chặt.* Ủa, cô đơn tới mức phải tìm bot để ôm hả? \U0001F92D",
             f"*{ctx.author.mention} ôm Luna một cái.* Được rồi, cho ôm một chút thôi nha 🌙",
-            f"*{ctx.author.mention} bất ngờ ôm Luna.* Luna chưa kịp chuẩn bị tinh thần luôn đó 😭",
-            f"*{ctx.author.mention} ôm Luna.* Ừm… Luna cho phép lần này. Lần sau báo trước nha 🤭",
+            f"*{ctx.author.mention} bất ngờ ôm Luna.* Luna chưa kịp chuẩn bị tinh thần luôn đó \U0001F62D",
+            f"*{ctx.author.mention} ôm Luna.* Ừm… Luna cho phép lần này. Lần sau báo trước nha \U0001F92D",
             f"*{ctx.author.mention} ôm Luna thật chặt.* Thôi nào, Luna ở đây rồi, đừng buồn nữa ♡",
         ]
     add_intimacy(
@@ -1274,21 +1274,21 @@ async def om(ctx, member: discord.Member):
 
     replies = [
         f"*{ctx.author.mention} bước đến, nhẹ nhàng ôm {member.mention} vào lòng.* Cứ yên một chút nhé. 🌙",
-        f"*{ctx.author.mention} khẽ kéo {member.mention} lại gần, trao một cái ôm thật nhẹ.* 🤍",
+        f"*{ctx.author.mention} khẽ kéo {member.mention} lại gần, trao một cái ôm thật nhẹ.* \U0001F90D",
         f"*{ctx.author.mention} vòng tay ôm lấy {member.mention}, giữ lại vài giây rồi mới buông ra.* ♡",
         f"*{ctx.author.mention} lặng lẽ ôm {member.mention} một cái, như muốn thay lời an ủi.* 🌙",
         f"*{ctx.author.mention} ôm nhẹ {member.mention}, rồi khẽ vỗ lưng vài cái.* Không sao đâu.",
-        f"*{ctx.author.mention} bất ngờ ôm {member.mention} một cái rồi cười.* Đừng trốn nha 🤭",
+        f"*{ctx.author.mention} bất ngờ ôm {member.mention} một cái rồi cười.* Đừng trốn nha \U0001F92D",
         f"*{ctx.author.mention} kéo {member.mention} vào một cái ôm nhẹ.* Cho ôm một chút thôi, đừng có chạy ♡",
         f"*{ctx.author.mention} ôm {member.mention} thật lâu, chẳng nói gì, chỉ im lặng ở bên.* 🌙",
-        f"*{ctx.author.mention} khẽ ôm lấy {member.mention}.* Một cái ôm nhỏ cho một ngày không vui. 🤍",
-        f"*{ctx.author.mention} ôm {member.mention} một cái thật nhẹ rồi buông ra.* Rồi, hết buồn chưa? 🤭",
+        f"*{ctx.author.mention} khẽ ôm lấy {member.mention}.* Một cái ôm nhỏ cho một ngày không vui. \U0001F90D",
+        f"*{ctx.author.mention} ôm {member.mention} một cái thật nhẹ rồi buông ra.* Rồi, hết buồn chưa? \U0001F92D",
         f"*{ctx.author.mention} ôm {member.mention} một cái thật nhẹ.* 🤍",
         f"*{ctx.author.mention} bước tới ôm {member.mention} một cái.* Ngoan nào ♡",
         f"*{ctx.author.mention} nhẹ nhàng ôm lấy {member.mention}, giữ một lúc rồi mới buông ra.* 🌙",
-        f"*{ctx.author.mention} bất ngờ ôm {member.mention}.* Không được né nha 🤭",
+        f"*{ctx.author.mention} bất ngờ ôm {member.mention}.* Không được né nha \U0001F92D",
         f"*{ctx.author.mention} kéo {member.mention} vào một cái ôm.* Được rồi, ở đây một chút nhé ♡",
-        f"*{ctx.author.mention} ôm {member.mention} thật chặt.* Hôm nay cho ôm ké một chút nha 🤭",
+        f"*{ctx.author.mention} ôm {member.mention} thật chặt.* Hôm nay cho ôm ké một chút nha \U0001F92D",
         f"*{ctx.author.mention} lặng lẽ ôm {member.mention} một cái, chẳng nói gì thêm.* 🌙",
         f"*{ctx.author.mention} ôm nhẹ {member.mention} rồi vỗ lưng vài cái.* Không sao đâu ♡",
     ]
@@ -1301,49 +1301,49 @@ async def be(ctx, member: discord.Member):
 
     if member.id == ctx.author.id:
         replies = [
-            f"*{ctx.author.mention} tự bế lấy mình.* Ủa, không có ai bế nên tự bế luôn hả? 🤭",
-            f"*{ctx.author.mention} cố gắng tự bế mình lên.* Khoan… hình như cách này hơi sai sai 😭",
-            f"*{ctx.author.mention} tự bế mình.* Luna đứng nhìn mà không biết nên giúp kiểu gì 🤨",
-            f"*{ctx.author.mention} thử tự bế bản thân.* Ừm… Luna nghĩ vật lý không cho phép đâu 🤭",
-            f"*{ctx.author.mention} tự bế mình lên rồi đứng hình.* Tự bế mình khó vậy sao? 😭",
+            f"*{ctx.author.mention} tự bế lấy mình.* Ủa, không có ai bế nên tự bế luôn hả? \U0001F92D",
+            f"*{ctx.author.mention} cố gắng tự bế mình lên.* Khoan… hình như cách này hơi sai sai \U0001F62D",
+            f"*{ctx.author.mention} tự bế mình.* Luna đứng nhìn mà không biết nên giúp kiểu gì \U0001F928",
+            f"*{ctx.author.mention} thử tự bế bản thân.* Ừm… Luna nghĩ vật lý không cho phép đâu \U0001F92D",
+            f"*{ctx.author.mention} tự bế mình lên rồi đứng hình.* Tự bế mình khó vậy sao? \U0001F62D",
         ]
         
         return await ctx.reply(random.choice(replies))
 
     if member.bot:
         replies = [
-            f"*{ctx.author.mention} nhẹ nhàng bế Luna lên.* Ơ… Luna có chân mà, sao lại bế Luna thế này? 😭",
-            f"*{ctx.author.mention} bế Luna lên.* Khoan nha, Luna chưa kịp chuẩn bị tinh thần đâu 🤭",
-            f"*{ctx.author.mention} bất ngờ bế Luna lên.* Ủa? Luna từ bot biến thành em bé từ bao giờ vậy? 😭",
-            f"*{ctx.author.mention} bế Luna lên thật nhẹ.* Được rồi… Luna cho phép bế một lúc thôi đó nha 🙄",
-            f"*{ctx.author.mention} bế Luna.* Luna nhìn xuống rồi nhìn lại bạn.* …Thả Luna xuống được chưa? 🤨",
-            f"*{ctx.author.mention} bế Luna lên.* Luna im lặng vài giây.* Ừm… cũng không tệ lắm 🤭",
-            f"*{ctx.author.mention} bế Luna lên.* Luna ngoan ngoãn ngồi yên.* Nhưng nhớ giữ chắc nha, rơi là Luna giận đó 😭",
+            f"*{ctx.author.mention} nhẹ nhàng bế Luna lên.* Ơ… Luna có chân mà, sao lại bế Luna thế này? \U0001F62D",
+            f"*{ctx.author.mention} bế Luna lên.* Khoan nha, Luna chưa kịp chuẩn bị tinh thần đâu \U0001F92D",
+            f"*{ctx.author.mention} bất ngờ bế Luna lên.* Ủa? Luna từ bot biến thành em bé từ bao giờ vậy? \U0001F62D",
+            f"*{ctx.author.mention} bế Luna lên thật nhẹ.* Được rồi… Luna cho phép bế một lúc thôi đó nha \U0001F644",
+            f"*{ctx.author.mention} bế Luna.* Luna nhìn xuống rồi nhìn lại bạn.* …Thả Luna xuống được chưa? \U0001F928",
+            f"*{ctx.author.mention} bế Luna lên.* Luna im lặng vài giây.* Ừm… cũng không tệ lắm \U0001F92D",
+            f"*{ctx.author.mention} bế Luna lên.* Luna ngoan ngoãn ngồi yên.* Nhưng nhớ giữ chắc nha, rơi là Luna giận đó \U0001F62D",
             f"*{ctx.author.mention} bế Luna.* Luna hơi bất ngờ nhưng vẫn để yên.* Hôm nay bạn mạnh ghê nha 🌙",
-            f"*{ctx.author.mention} bế Luna lên rồi giữ chặt.* Luna: “Ơ từ từ… Luna chưa đồng ý mà!” 😭",
-            f"*{ctx.author.mention} bế Luna lên.* Luna khẽ thở dài.* Thôi được, hôm nay cho bế ké một chút 🤭",
-            f"*{ctx.author.mention} bế Luna.* Luna khoanh tay nhìn bạn.* Bế rồi thì nhớ chịu trách nhiệm nha 🙄",
-            f"*{ctx.author.mention} bế Luna lên.* Luna nhìn quanh một vòng.* Ồ… góc nhìn này cũng lạ ghê 👀",
-            f"*{ctx.author.mention} bế Luna.* Luna ngoan ngoãn để yên.* Nhưng đừng tưởng bế được là Luna hết quyền lực nha 😌",
-            f"*{ctx.author.mention} bế Luna lên.* Luna bật mode em bé trong vài phút.* 🌙🤭",
+            f"*{ctx.author.mention} bế Luna lên rồi giữ chặt.* Luna: “Ơ từ từ… Luna chưa đồng ý mà!” \U0001F62D",
+            f"*{ctx.author.mention} bế Luna lên.* Luna khẽ thở dài.* Thôi được, hôm nay cho bế ké một chút \U0001F92D",
+            f"*{ctx.author.mention} bế Luna.* Luna khoanh tay nhìn bạn.* Bế rồi thì nhớ chịu trách nhiệm nha \U0001F644",
+            f"*{ctx.author.mention} bế Luna lên.* Luna nhìn quanh một vòng.* Ồ… góc nhìn này cũng lạ ghê \U0001F440",
+            f"*{ctx.author.mention} bế Luna.* Luna ngoan ngoãn để yên.* Nhưng đừng tưởng bế được là Luna hết quyền lực nha \U0001F614",
+            f"*{ctx.author.mention} bế Luna lên.* Luna bật mode em bé trong vài phút.* \U0001F92D",
             f"*{ctx.author.mention} bế Luna.* Luna khẽ cười.* Được chăm sóc thế này cũng thích đó chứ ♡",
         ]
         
         return await ctx.reply(random.choice(replies))
 
     replies = [
-        f"*{ctx.author.mention} nhẹ nhàng bế {member.mention} lên, giữ thật chắc để không bị trượt.* Rồi, lên đây một chút nào 🤭",
-        f"*{ctx.author.mention} bất ngờ bế {member.mention} lên.* Chưa kịp phản ứng gì đã bị bế mất rồi, bất ngờ chưa? 😭",
-        f"*{ctx.author.mention} cúi xuống bế {member.mention} lên rồi đứng thẳng lại.* Yên tâm, giữ chắc lắm, không rơi đâu 🤭",
-        f"*{ctx.author.mention} bế {member.mention} lên một cách gọn gàng.* Được rồi, hôm nay đi bằng phương tiện đặc biệt nhé 😌",
-        f"*{ctx.author.mention} nhanh tay bế {member.mention} lên.* Rồi, bắt được rồi nha. Đừng có chạy nữa 🤭",
-        f"*{ctx.author.mention} bế {member.mention} lên rồi điều chỉnh lại cho chắc.* Cứ đứng yên một chút, an toàn tuyệt đối 😌",
+        f"*{ctx.author.mention} nhẹ nhàng bế {member.mention} lên, giữ thật chắc để không bị trượt.* Rồi, lên đây một chút nào \U0001F92D",
+        f"*{ctx.author.mention} bất ngờ bế {member.mention} lên.* Chưa kịp phản ứng gì đã bị bế mất rồi, bất ngờ chưa? \U0001F62D",
+        f"*{ctx.author.mention} cúi xuống bế {member.mention} lên rồi đứng thẳng lại.* Yên tâm, giữ chắc lắm, không rơi đâu \U0001F92D",
+        f"*{ctx.author.mention} bế {member.mention} lên một cách gọn gàng.* Được rồi, hôm nay đi bằng phương tiện đặc biệt nhé \U0001F614",
+        f"*{ctx.author.mention} nhanh tay bế {member.mention} lên.* Rồi, bắt được rồi nha. Đừng có chạy nữa \U0001F92D",
+        f"*{ctx.author.mention} bế {member.mention} lên rồi điều chỉnh lại cho chắc.* Cứ đứng yên một chút, an toàn tuyệt đối \U0001F614",
         f"*{ctx.author.mention} nhẹ nhàng bế {member.mention} lên.* Một chuyến đi ngắn thôi, hành khách vui lòng ngồi yên nhé 🌙",
-        f"*{ctx.author.mention} bế {member.mention} lên như thể chuyện này hoàn toàn bình thường.* Có vẻ hôm nay không cần tự đi nữa rồi 🤭",
-        f"*{ctx.author.mention} bất ngờ bế {member.mention} lên.* Ủa, sao đứng hình vậy? Chưa từng được bế à? 😭",
-        f"*{ctx.author.mention} bế {member.mention} lên rồi nhìn một lúc.* Rồi đó, giờ muốn xuống thì nói nha 🤭",
-        f"*{ctx.author.mention} nhẹ nhàng bế {member.mention} lên.* Không cần lo, lần này Luna— à thôi, cứ yên tâm là được 😭",
-        f"*{ctx.author.mention} bế {member.mention} lên rồi khẽ cười.* Gọn ghẽ thế này thì bế thêm một đoạn cũng được nhỉ? 🤭",
+        f"*{ctx.author.mention} bế {member.mention} lên như thể chuyện này hoàn toàn bình thường.* Có vẻ hôm nay không cần tự đi nữa rồi \U0001F92D",
+        f"*{ctx.author.mention} bất ngờ bế {member.mention} lên.* Ủa, sao đứng hình vậy? Chưa từng được bế à? \U0001F62D",
+        f"*{ctx.author.mention} bế {member.mention} lên rồi nhìn một lúc.* Rồi đó, giờ muốn xuống thì nói nha \U0001F92D",
+        f"*{ctx.author.mention} nhẹ nhàng bế {member.mention} lên.* Không cần lo, lần này Luna— à thôi, cứ yên tâm là được \U0001F62D",
+        f"*{ctx.author.mention} bế {member.mention} lên rồi khẽ cười.* Gọn ghẽ thế này thì bế thêm một đoạn cũng được nhỉ? \U0001F92D",
     ]
     
     return await ctx.reply(random.choice(replies))
@@ -1353,20 +1353,20 @@ async def can(ctx, member: discord.Member):
 
     if member.id == ctx.author.id:
         replies = [
-            f"{ctx.author.mention} tự cắn mình một cái. Ủa… tự nhiên làm vậy chi? 😭",
-            f"{ctx.author.mention} nhìn quanh một vòng, chẳng thấy ai để cắn nên đành tự xử. Quyết định hơi lạ nhưng thôi… 🤨",
-            f"{ctx.author.mention} tự cắn mình một cái rồi đứng hình. Có vẻ chính chủ cũng không hiểu chuyện gì vừa xảy ra 😭",
-            f"{ctx.author.mention} thử tự cắn mình. Kết quả: người cắn và người bị cắn đều là một người. Quá tiết kiệm nhân lực 🤭",
-            f"{ctx.author.mention} tự cắn mình một cái rồi tỉnh bơ như chưa có chuyện gì xảy ra. Chuyên nghiệp ghê 😭",
-            f"{ctx.author.mention} định cắn ai đó cho vui, nhưng nhìn quanh chẳng có ai. Thế là tự cắn mình luôn 🤨",
-            f"{ctx.author.mention} tự cắn mình rồi suy nghĩ rất lâu về quyết định của bản thân. Luna cũng không biết nên nói gì 😭",
-            f"*{ctx.author.mention} tự cắn nhẹ mình một cái.* Xong rồi ngồi im như thể đó là chuyện hoàn toàn bình thường. 🤭",
-            f"{ctx.author.mention} tự cắn mình để kiểm tra xem có đang mơ không. Tin buồn: vẫn tỉnh nha 😭",
-            f"{ctx.author.mention} tự cắn mình một cái. Não: “Tại sao?” — Chính chủ: “Không biết.” 🤨"
-            f"{ctx.author.mention} tự cắn mình xong nhìn quanh tìm nhân chứng. Xin lỗi nha, Luna thấy hết rồi 🤭",
-            f"{ctx.author.mention} vừa tự cắn mình. Một pha tương tác nội bộ cực kỳ thành công 😭",
-            f"{ctx.author.mention} tự cắn mình rồi đứng hình vài giây. Có vẻ hệ thống đang gặp lỗi nhẹ 🤖",
-            f"{ctx.author.mention} quyết định tự cắn mình. Một quyết định không ai yêu cầu nhưng vẫn được thực hiện rất nghiêm túc 🤭",
+            f"{ctx.author.mention} tự cắn mình một cái. Ủa… tự nhiên làm vậy chi? \U0001F62D",
+            f"{ctx.author.mention} nhìn quanh một vòng, chẳng thấy ai để cắn nên đành tự xử. Quyết định hơi lạ nhưng thôi… \U0001F928",
+            f"{ctx.author.mention} tự cắn mình một cái rồi đứng hình. Có vẻ chính chủ cũng không hiểu chuyện gì vừa xảy ra \U0001F62D",
+            f"{ctx.author.mention} thử tự cắn mình. Kết quả: người cắn và người bị cắn đều là một người. Quá tiết kiệm nhân lực \U0001F92D",
+            f"{ctx.author.mention} tự cắn mình một cái rồi tỉnh bơ như chưa có chuyện gì xảy ra. Chuyên nghiệp ghê \U0001F62D",
+            f"{ctx.author.mention} định cắn ai đó cho vui, nhưng nhìn quanh chẳng có ai. Thế là tự cắn mình luôn \U0001F928",
+            f"{ctx.author.mention} tự cắn mình rồi suy nghĩ rất lâu về quyết định của bản thân. Luna cũng không biết nên nói gì \U0001F62D",
+            f"*{ctx.author.mention} tự cắn nhẹ mình một cái.* Xong rồi ngồi im như thể đó là chuyện hoàn toàn bình thường. \U0001F92D",
+            f"{ctx.author.mention} tự cắn mình để kiểm tra xem có đang mơ không. Tin buồn: vẫn tỉnh nha \U0001F62D",
+            f"{ctx.author.mention} tự cắn mình một cái. Não: “Tại sao?” — Chính chủ: “Không biết.” \U0001F928"
+            f"{ctx.author.mention} tự cắn mình xong nhìn quanh tìm nhân chứng. Xin lỗi nha, Luna thấy hết rồi \U0001F92D",
+            f"{ctx.author.mention} vừa tự cắn mình. Một pha tương tác nội bộ cực kỳ thành công \U0001F62D",
+            f"{ctx.author.mention} tự cắn mình rồi đứng hình vài giây. Có vẻ hệ thống đang gặp lỗi nhẹ \U0001F916",
+            f"{ctx.author.mention} quyết định tự cắn mình. Một quyết định không ai yêu cầu nhưng vẫn được thực hiện rất nghiêm túc \U0001F92D",
             f"{ctx.author.mention} tự cắn mình một cái rồi tự hỏi tại sao.",
         ]
         
@@ -1374,26 +1374,26 @@ async def can(ctx, member: discord.Member):
         
     if member.bot:
         replies = [
-            f"{ctx.author.mention} cắn Luna một cái. Ơ kìa, Luna đâu phải đồ ăn đâu 😭",
-            f"{ctx.author.mention} bất ngờ cắn Luna. Luna đứng hình vài giây… Ủa, chuyện gì vừa xảy ra vậy? 🤨",
-            f"{ctx.author.mention} cắn Luna một cái rồi tỉnh bơ. Gan ghê nha, Luna nhớ mặt rồi đó 🤭",
-            f"{ctx.author.mention} khẽ cắn Luna. Luna nhìn lại đầy khó hiểu: “Bạn vừa cắn tôi đấy à?” 😭",
-            f"{ctx.author.mention} cắn Luna một cái. Luna im lặng vài giây để xử lý tình huống… 🤨",
-            f"{ctx.author.mention} vừa cắn Luna. Luna xin phép đặt câu hỏi: tại sao? 😭",
-            f"{ctx.author.mention} cắn Luna rồi giả vờ không có chuyện gì xảy ra. Luna thấy hết nha 👀",
-            f"{ctx.author.mention} cắn Luna một cái. Được rồi… Luna sẽ coi như đây là một hình thức chào hỏi mới 🤭",
-            f"{ctx.author.mention} cắn Luna. Luna: “Tôi là bot, không phải đồ ăn.” 🙄",
-            f"{ctx.author.mention} cắn Luna một cái rồi bỏ đi. Luna đứng đó với hàng nghìn câu hỏi trong đầu 😭",
-            f"{ctx.author.mention} khẽ cắn Luna. Luna nhìn bạn vài giây rồi quyết định… thôi, cho qua lần này 🤭",
-            f"{ctx.author.mention} cắn Luna. Ủa? Tự nhiên hôm nay Luna thành đồ ăn vậy? 😭",
+            f"{ctx.author.mention} cắn Luna một cái. Ơ kìa, Luna đâu phải đồ ăn đâu \U0001F62D",
+            f"{ctx.author.mention} bất ngờ cắn Luna. Luna đứng hình vài giây… Ủa, chuyện gì vừa xảy ra vậy? \U0001F928",
+            f"{ctx.author.mention} cắn Luna một cái rồi tỉnh bơ. Gan ghê nha, Luna nhớ mặt rồi đó \U0001F92D",
+            f"{ctx.author.mention} khẽ cắn Luna. Luna nhìn lại đầy khó hiểu: “Bạn vừa cắn tôi đấy à?” \U0001F62D",
+            f"{ctx.author.mention} cắn Luna một cái. Luna im lặng vài giây để xử lý tình huống… \U0001F928",
+            f"{ctx.author.mention} vừa cắn Luna. Luna xin phép đặt câu hỏi: tại sao? \U0001F62D",
+            f"{ctx.author.mention} cắn Luna rồi giả vờ không có chuyện gì xảy ra. Luna thấy hết nha \U0001F440",
+            f"{ctx.author.mention} cắn Luna một cái. Được rồi… Luna sẽ coi như đây là một hình thức chào hỏi mới \U0001F92D",
+            f"{ctx.author.mention} cắn Luna. Luna: “Tôi là bot, không phải đồ ăn.” \U0001F644",
+            f"{ctx.author.mention} cắn Luna một cái rồi bỏ đi. Luna đứng đó với hàng nghìn câu hỏi trong đầu \U0001F62D",
+            f"{ctx.author.mention} khẽ cắn Luna. Luna nhìn bạn vài giây rồi quyết định… thôi, cho qua lần này \U0001F92D",
+            f"{ctx.author.mention} cắn Luna. Ủa? Tự nhiên hôm nay Luna thành đồ ăn vậy? \U0001F62D",
             f"{ctx.author.mention} cắn Luna một cái. Luna hơi bất ngờ nhưng vẫn cố giữ hình tượng 🌙",
-            f"{ctx.author.mention} vừa cắn Luna. Luna đã ghi nhận hành vi này vào bộ nhớ… 👀",
-            f"{ctx.author.mention} cắn Luna rồi cười. Luna: “Vui lắm đúng không?” 🙄",
-            f"{ctx.author.mention} cắn Luna một cái. Luna đứng hình, hệ thống tạm thời không tìm thấy phản ứng phù hợp 🤖",
-            f"{ctx.author.mention} cắn Luna. Luna không đau… chỉ hơi khó hiểu về cách bạn thể hiện tình cảm thôi 😭",
-            f"{ctx.author.mention} cắn Luna một cái rồi bỏ chạy. Đứng lại coi, ai cho cắn xong chạy vậy? 🤭",
-            f"{ctx.author.mention} cắn Luna. Luna nhìn bạn như muốn hỏi rất nhiều thứ nhưng cuối cùng chọn im lặng 😭",
-            f"{ctx.author.mention} cắn Luna một cái. Rồi xong, hôm nay Luna chính thức bị bắt nạt 🤨",
+            f"{ctx.author.mention} vừa cắn Luna. Luna đã ghi nhận hành vi này vào bộ nhớ… \U0001F440",
+            f"{ctx.author.mention} cắn Luna rồi cười. Luna: “Vui lắm đúng không?” \U0001F644",
+            f"{ctx.author.mention} cắn Luna một cái. Luna đứng hình, hệ thống tạm thời không tìm thấy phản ứng phù hợp \U0001F916",
+            f"{ctx.author.mention} cắn Luna. Luna không đau… chỉ hơi khó hiểu về cách bạn thể hiện tình cảm thôi \U0001F62D",
+            f"{ctx.author.mention} cắn Luna một cái rồi bỏ chạy. Đứng lại coi, ai cho cắn xong chạy vậy? \U0001F4A2",
+            f"{ctx.author.mention} cắn Luna. Luna nhìn bạn như muốn hỏi rất nhiều thứ nhưng cuối cùng chọn im lặng \U0001F62D",
+            f"{ctx.author.mention} cắn Luna một cái. Rồi xong, hôm nay Luna chính thức bị bắt nạt \U0001F928",
         ]
 
         return await ctx.reply(random_reply(replies))
@@ -1405,25 +1405,25 @@ async def can(ctx, member: discord.Member):
     )
 
     replies = [
-        f"{ctx.author.mention} cắn nhẹ {member.mention} một cái rồi tỉnh bơ như chưa có chuyện gì xảy ra. Đùa thôi nha 🤭",
-        f"{ctx.author.mention} lén cắn {member.mention} một cái rồi nhanh chóng giả vờ vô tội. Đừng giận nha 😭",
-        f"{ctx.author.mention} khẽ cắn {member.mention} một cái cho vui rồi đứng đó chờ phản ứng. 🤭",
-        f"{ctx.author.mention} bất ngờ cắn nhẹ {member.mention} rồi lập tức lùi lại. Đùa thôi mà, đừng nhìn dữ vậy 😭",
-        f"{ctx.author.mention} cắn nhẹ {member.mention} một cái rồi cười như thể đó là chuyện bình thường nhất thế giới. 🤭",
-        f"{ctx.author.mention} tiến lại gần, cắn nhẹ {member.mention} một cái rồi quay đi. Một pha trêu chọc rất tỉnh 😌",
-        f"{ctx.author.mention} khẽ cắn {member.mention} rồi nhìn người kia vài giây. Thôi nào, đùa một chút thôi mà 😭", 
-        f"{ctx.author.mention} cắn nhẹ {member.mention} một cái rồi lập tức làm vẻ mặt vô tội. Luna— à thôi, không ai thấy gì hết 🤭",
-        f"{ctx.author.mention} lén cắn {member.mention} một cái rồi đứng im như đang chờ bị trả đũa. 👀",
-        f"{ctx.author.mention} cắn nhẹ {member.mention} rồi bật cười. Đừng giận nha, chỉ nghịch một chút thôi 🤭",
-        f"{ctx.author.mention} bất ngờ cắn {member.mention} một cái thật nhẹ rồi nhanh chóng nói: “Đùa thôi nha!” 😭",
-        f"{ctx.author.mention} khẽ cắn {member.mention} một cái rồi giả vờ nhìn sang chỗ khác như không liên quan. 🤨",
-        f"{ctx.author.mention} cắn nhẹ {member.mention} xong còn đứng đó chờ xem người kia có phản ứng gì. Gan thật đấy 🤭",
+        f"{ctx.author.mention} cắn nhẹ {member.mention} một cái rồi tỉnh bơ như chưa có chuyện gì xảy ra. Đùa thôi nha \U0001F92D",
+        f"{ctx.author.mention} lén cắn {member.mention} một cái rồi nhanh chóng giả vờ vô tội. Đừng giận nha \U0001F62D",
+        f"{ctx.author.mention} khẽ cắn {member.mention} một cái cho vui rồi đứng đó chờ phản ứng. \U0001F92D",
+        f"{ctx.author.mention} bất ngờ cắn nhẹ {member.mention} rồi lập tức lùi lại. Đùa thôi mà, đừng nhìn dữ vậy \U0001F62D",
+        f"{ctx.author.mention} cắn nhẹ {member.mention} một cái rồi cười như thể đó là chuyện bình thường nhất thế giới. \U0001F92D",
+        f"{ctx.author.mention} tiến lại gần, cắn nhẹ {member.mention} một cái rồi quay đi. Một pha trêu chọc rất tỉnh \U0001F644",
+        f"{ctx.author.mention} khẽ cắn {member.mention} rồi nhìn người kia vài giây. Thôi nào, đùa một chút thôi mà \U0001F62D", 
+        f"{ctx.author.mention} cắn nhẹ {member.mention} một cái rồi lập tức làm vẻ mặt vô tội. Luna— à thôi, không ai thấy gì hết \U0001F92D",
+        f"{ctx.author.mention} lén cắn {member.mention} một cái rồi đứng im như đang chờ bị trả đũa. \U0001F440",
+        f"{ctx.author.mention} cắn nhẹ {member.mention} rồi bật cười. Đừng giận nha, chỉ nghịch một chút thôi \U0001F92D",
+        f"{ctx.author.mention} bất ngờ cắn {member.mention} một cái thật nhẹ rồi nhanh chóng nói: “Đùa thôi nha!” \U0001F62D",
+        f"{ctx.author.mention} khẽ cắn {member.mention} một cái rồi giả vờ nhìn sang chỗ khác như không liên quan. \U0001F928",
+        f"{ctx.author.mention} cắn nhẹ {member.mention} xong còn đứng đó chờ xem người kia có phản ứng gì. Gan thật đấy \U0001F92D",
         f"{ctx.author.mention} lén cắn {member.mention} một cái rồi cười. Một chút nghịch ngợm thôi, đừng giận nha ♡",
-        f"{ctx.author.mention} cắn nhẹ {member.mention} rồi lập tức lùi ra xa một bước để đề phòng bị trả đũa. 😭",
-        f"{ctx.author.mention} khẽ cắn {member.mention} một cái. Xong rồi, coi như chưa có chuyện gì xảy ra nha 🤭",
-        f"{ctx.author.mention} tiến lại gần {member.mention}, cắn nhẹ một cái rồi tỉnh bơ quay đi. 😌",
-        f"{ctx.author.mention} cắn nhẹ {member.mention} một cái rồi nhìn lại đầy vô tội. “Mình có làm gì đâu?” 🤭",
-        f"{ctx.author.mention} bất ngờ cắn nhẹ {member.mention}. Sau đó đứng hình vài giây vì không biết nên giải thích thế nào. 😭",
+        f"{ctx.author.mention} cắn nhẹ {member.mention} rồi lập tức lùi ra xa một bước để đề phòng bị trả đũa. \U0001F62D",
+        f"{ctx.author.mention} khẽ cắn {member.mention} một cái. Xong rồi, coi như chưa có chuyện gì xảy ra nha \U0001F92D",
+        f"{ctx.author.mention} tiến lại gần {member.mention}, cắn nhẹ một cái rồi tỉnh bơ quay đi. \U0001F644",
+        f"{ctx.author.mention} cắn nhẹ {member.mention} một cái rồi nhìn lại đầy vô tội. “Mình có làm gì đâu?” \U0001F92D",
+        f"{ctx.author.mention} bất ngờ cắn nhẹ {member.mention}. Sau đó đứng hình vài giây vì không biết nên giải thích thế nào. \U0001F62D",
         f"{ctx.author.mention} cắn {member.mention} một cái thật nhẹ rồi cười. Đừng giận, lần này.",
     ]
     

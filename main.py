@@ -1134,7 +1134,7 @@ async def hon(ctx, member: discord.Member):
     replies = [
         f"🌙 {member.mention} ơi, có người vừa lén hôn bạn kìa \U0001F92D",
         f"🌙 {member.mention} ơi, vừa có người tranh thủ hôn bạn kìa \U0001F440",
-        f"☾ Luna quay đi có một chút mà {ctx.author.mention} đã hôn {member.mention rồi {chr(0x1F92D)}",
+        f"☾ Luna quay đi có một chút mà {ctx.author.mention} đã hôn {member.mention} rồi \U0001F92D",
         f"🌙 Nhanh dữ nha {ctx.author.mention}, {member.mention} còn chưa kịp chuẩn bị luôn đó \U0001F92D",
         f"♡ {ctx.author.mention} ơi, hôn người ta mà không báo Luna là sao? \U0001F644",
         f"☾ Luna thấy hết nha… {ctx.author.mention} vừa lén hôn {member.mention đó \U0001F440",

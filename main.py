@@ -20,6 +20,7 @@ TOKEN = os.getenv("TOKEN", "").strip()
 OWNER_ID = int(os.getenv("OWNER_ID", "0") or 0)
 PREFIXES = ("l!", "L!")
 DB_FILE = os.getenv("LUNA_DB", "luna.db")
+
 LUNA_COIN_ICON = "https://raw.githubusercontent.com/phuongwlynh31012011-png/Luna-bot/7ef75e7bc87bcb26ef5cfdb7ed813470a5307cdf/luna_xu_emoji.png"
 
 def random_reply(replies):
@@ -696,10 +697,15 @@ async def serverinfo(ctx):
 @bot.command()
 async def balance(ctx, member: discord.Member | None = None):
     member = member or ctx.author
-    await ctx.reply(embed=embed(
-        "💰 Số dư Lune",
+
+    e = embed(
+        "🌙 Số dư Luna",
         f"{member.mention} đang có **{money(get_balance(ctx.guild.id, member.id))}**."
-    ))
+    )
+
+    e.set_thumbnail(url=LUNA_COIN_ICON)
+
+    await ctx.reply(embed=e)
 
 
 @bot.command(aliases=["bal", "xu"])

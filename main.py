@@ -20,6 +20,7 @@ TOKEN = os.getenv("TOKEN", "").strip()
 OWNER_ID = int(os.getenv("OWNER_ID", "0") or 0)
 PREFIXES = ("l!", "L!")
 DB_FILE = os.getenv("LUNA_DB", "luna.db")
+LUNA_COIN_ICON = "https://raw.githubusercontent.com/phuongwlynh31012011-png/Luna-bot/7ef75e7bc87bcb26ef5cfdb7ed813470a5307cdf/luna_xu_emoji.png"
 
 def random_reply(replies):
     return random.choice(replies)
@@ -222,13 +223,14 @@ def add_intimacy(user1, user2, amount):
     return new_intimacy
 
 
-def embed(title: str, description: str = "", color: discord.Color = discord.Color.blurple()):
-    return discord.Embed(
+ def embed(title: str, description: str = "", color: discord.Color = discord.Color.blurple()):
+    e = discord.Embed(
         title=title,
         description=description,
         color=color,
         timestamp=datetime.now(timezone.utc),
     )
+    return e
 
 
 def money(amount: int) -> str:

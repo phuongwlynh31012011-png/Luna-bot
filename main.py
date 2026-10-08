@@ -223,8 +223,8 @@ def add_intimacy(user1, user2, amount):
     return new_intimacy
 
 
- def embed(title: str, description: str = "", color: discord.Color = discord.Color.blurple()):
-    e = discord.Embed(
+def embed(title: str, description: str = "", color: discord.Color = discord.Color.blurple()):
+    return discord.Embed(
         title=title,
         description=description,
         color=color,

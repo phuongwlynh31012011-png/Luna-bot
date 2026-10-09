@@ -562,6 +562,14 @@ async def on_command_error(ctx, error):
 # ============================================================
 
 CATEGORIES = {
+    
+    "info": ("🌙 Thông tin", [
+        "`l!help` / `l!h` — bảng lệnh Luna (Luna core)",
+        "`l!info` / `l!botinfo` — thông tin bot",
+        "`l!avatar [@user]` — xem avatar",
+        "`l!userinfo [@user]` — thông tin thành viên",
+        "`l!serverinfo` — thông tin server",
+    ]),
     "money": ("💰 Tiền Lune", [
         "`l!balance [@user]` — xem số dư",
         "`l!give @user <số>` — chuyển xu",
@@ -614,8 +622,9 @@ CATEGORIES = {
     ]),
     "server": ("⚙️ Server Setup", [
         "`l!settings` — xem cấu hình",
-        "`l!setlog #kênh`",
-        "`l!xp on/off`",
+        "`l!setlog #kênh` — đặt kênh log",
+        "`l!xp on/off` — bật/tắt XP",
+        "`l!antilink on/off` — bật/tắt chặn link mời",
     ]),
     "owner": ("👑 Owner Bot", [
         "`l!cheatxu @user <số xu>` — cộng xu cho user",
@@ -2013,6 +2022,34 @@ async def xp(ctx, mode: str):
         await ctx.reply("✅ Đã **bật hệ thống XP**.")
     else:
         await ctx.reply("🔴 Đã **tắt hệ thống XP**.")
+
+
+@bot.command(name="antilink")
+@admin_only()
+async def antilink(ctx, state: str = None):
+    if ctx.guild is None:
+        return
+
+    if state is None or state.lower() not in ("on", "off"):
+        return await ctx.reply(
+            "🌙 Dùng: `l!antilink on` hoặc `l!antilink off`"
+        )
+
+    enabled = 1 if state.lower() == "on" else 0
+
+    db.execute(
+        """
+        INSERT INTO antilink_settings (guild_id, enabled)
+        VALUES (?, ?)
+        ON CONFLICT(guild_id)
+        DO UPDATE SET enabled = excluded.enabled
+        """,
+        (ctx.guild.id, enabled)
+    )
+    db.commit()
+
+    status = "BẬT" if enabled else "TẮT"
+    await ctx.reply(f"🌙 AntiLink đã **{status}** trong server này.")
         
 # ============================================================
 # ROLE MANAGEMENT

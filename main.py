@@ -136,6 +136,11 @@ def db_init():
     UNIQUE (user1),
     UNIQUE (user2)
         );
+
+                CREATE TABLE IF NOT EXISTS antilink_settings (
+            guild_id INTEGER PRIMARY KEY,
+            enabled INTEGER NOT NULL DEFAULT 0
+        );
     """)
 
     db.commit()
@@ -485,60 +490,52 @@ async def on_message(message: discord.Message):
         return
 
     if message.guild is not None:
-        lune_guild_id = int(
-            os.getenv("LUNE_GUILD_ID", "0") or 0
-        )
+        setting = db.execute(
+            "SELECT enabled FROM antilink_settings WHERE guild_id = ?",
+            (message.guild.id,)
+        ).fetchone()
 
-        # Chưa cấu hình ID thì không tự ý chặn link
-        if lune_guild_id:
+        if setting and setting["enabled"]:
             codes = INVITE_PATTERN.findall(message.content)
 
             for code in codes:
                 try:
                     invite = await bot.fetch_invite(code)
-                    target_guild = invite.guild
 
-                    # Cho phép lời mời dẫn đến Lune Haven
+                    # Cho phép link mời của chính server hiện tại
                     if (
-                        target_guild is not None
-                        and target_guild.id == lune_guild_id
+                        invite.guild is not None
+                        and invite.guild.id == message.guild.id
                     ):
                         continue
 
-                    # Không xác định được server đích
-                    if target_guild is None:
-                        continue
+                    # Chỉ xóa khi xác định được link dẫn đến server khác
+                    if invite.guild is not None:
+                        await message.delete()
 
-                    # Link dẫn đến server khác
-                    await message.delete()
-
-                    await message.channel.send(
-                        f"{message.author.mention} 🌙 "
-                        "Lune Haven không cho phép gửi "
-                        "link mời server Discord khác nhé!",
-                        delete_after=5
-                    )
-                    return
+                        await message.channel.send(
+                            f"{message.author.mention} 🌙 "
+                            "Không được gửi link mời server khác nhé!",
+                            delete_after=5
+                        )
+                        return
 
                 except discord.NotFound:
-                    # Link hết hạn hoặc không tồn tại
                     continue
-
                 except discord.Forbidden:
                     print(
                         "Luna thiếu quyền Manage Messages "
                         "hoặc Send Messages."
                     )
                     return
-
                 except discord.HTTPException as error:
                     print(f"Lỗi kiểm tra link mời: {error}")
                     continue
 
-    # Giữ nguyên XP và xử lý lệnh Luna
+    # Giữ nguyên XP và xử lý lệnh hiện tại
     await add_xp(message)
     await bot.process_commands(message)
-
+     
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -1787,6 +1784,44 @@ async def do_warn(ctx, member, reason):
     db.commit()
     await ctx.reply(f"⚠️ {member.mention} nhận cảnh cáo **#{count}**.\nLý do: {reason}")
     await send_log(ctx.guild,"⚠️ WARN",f"{member.mention} bị warn bởi {ctx.author.mention}\nLý do: {reason}")
+
+
+
+@bot.command(name="antilink")
+@admin_only()
+async def antilink(ctx, state: str = None):
+    if ctx.guild is None:
+        return await ctx.reply(
+            "🌙 Lệnh này chỉ dùng trong server."
+        )
+
+    if state is None or state.lower() not in ("on", "off"):
+        return await ctx.reply(
+            "☾ Cách dùng: `l!antilink on` hoặc `l!antilink off`"
+        )
+
+    enabled = 1 if state.lower() == "on" else 0
+
+    db.execute(
+        """
+        INSERT INTO antilink_settings (guild_id, enabled)
+        VALUES (?, ?)
+        ON CONFLICT(guild_id)
+        DO UPDATE SET enabled = excluded.enabled
+        """,
+        (ctx.guild.id, enabled)
+    )
+    db.commit()
+
+    if enabled:
+        await ctx.reply(
+            "🌙 Đã **BẬT** chặn link mời server Discord khác!\n"
+            "Link mời của server này vẫn được phép."
+        )
+    else:
+        await ctx.reply(
+            "🌙 Đã **TẮT** chặn link mời Discord."
+        )
 
 
 @bot.command()

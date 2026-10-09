@@ -2031,8 +2031,7 @@ async def antilink(ctx, state: str = None):
 
     if state is None or state.lower() not in ("on", "off"):
         return await ctx.reply(
-            "🌙 Dùng: `l!antilink on` hoặc `l!antilink off`"
-        )
+            "🌙 Dùng: `l!antilink on` hoặc `l!antilink off`")
 
     enabled = 1 if state.lower() == "on" else 0
 
@@ -2044,6 +2043,8 @@ async def antilink(ctx, state: str = None):
         DO UPDATE SET enabled = excluded.enabled
         """,
         (ctx.guild.id, enabled)
+    
+    await ctx.reply(f"🌙 AntiLink đã **{status}** trong server này.")
     )
     db.commit()
 

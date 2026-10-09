@@ -3,6 +3,7 @@ import sqlite3
 import asyncio
 import random
 import time
+import re
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -469,10 +470,72 @@ async def on_ready():
             pass
 
 
+
+INVITE_PATTERN = re.compile(
+    r"(?:https?://)?(?:www\.)?"
+    r"(?:discord\.gg|discord(?:app)?\.com/invite)/"
+    r"([a-zA-Z0-9-]+)",
+    re.IGNORECASE
+)
+
+
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot:
         return
+
+    if message.guild is not None:
+        lune_guild_id = int(
+            os.getenv("LUNE_GUILD_ID", "0") or 0
+        )
+
+        # Chưa cấu hình ID thì không tự ý chặn link
+        if lune_guild_id:
+            codes = INVITE_PATTERN.findall(message.content)
+
+            for code in codes:
+                try:
+                    invite = await bot.fetch_invite(code)
+                    target_guild = invite.guild
+
+                    # Cho phép lời mời dẫn đến Lune Haven
+                    if (
+                        target_guild is not None
+                        and target_guild.id == lune_guild_id
+                    ):
+                        continue
+
+                    # Không xác định được server đích
+                    if target_guild is None:
+                        continue
+
+                    # Link dẫn đến server khác
+                    await message.delete()
+
+                    await message.channel.send(
+                        f"{message.author.mention} 🌙 "
+                        "Lune Haven không cho phép gửi "
+                        "link mời server Discord khác nhé!",
+                        delete_after=5
+                    )
+                    return
+
+                except discord.NotFound:
+                    # Link hết hạn hoặc không tồn tại
+                    continue
+
+                except discord.Forbidden:
+                    print(
+                        "Luna thiếu quyền Manage Messages "
+                        "hoặc Send Messages."
+                    )
+                    return
+
+                except discord.HTTPException as error:
+                    print(f"Lỗi kiểm tra link mời: {error}")
+                    continue
+
+    # Giữ nguyên XP và xử lý lệnh Luna
     await add_xp(message)
     await bot.process_commands(message)
 

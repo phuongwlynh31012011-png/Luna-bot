@@ -562,7 +562,6 @@ async def on_command_error(ctx, error):
 # ============================================================
 
 CATEGORIES = {
-    
     "info": ("🌙 Thông tin", [
         "`l!help` / `l!h` — bảng lệnh Luna (Luna core)",
         "`l!info` / `l!botinfo` — thông tin bot",

@@ -2021,7 +2021,7 @@ async def xp(ctx, mode: str):
         await ctx.reply("✅ Đã **bật hệ thống XP**.")
     else:
         await ctx.reply("🔴 Đã **tắt hệ thống XP**.")
-    )
+    
     db.commit()
 
     status = "BẬT" if enabled else "TẮT"

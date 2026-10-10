@@ -2021,30 +2021,6 @@ async def xp(ctx, mode: str):
         await ctx.reply("✅ Đã **bật hệ thống XP**.")
     else:
         await ctx.reply("🔴 Đã **tắt hệ thống XP**.")
-
-
-@bot.command(name="antilink")
-@admin_only()
-async def antilink(ctx, state: str = None):
-    if ctx.guild is None:
-        return
-
-    if state is None or state.lower() not in ("on", "off"):
-        return await ctx.reply(
-            "🌙 Dùng: `l!antilink on` hoặc `l!antilink off`")
-
-    enabled = 1 if state.lower() == "on" else 0
-
-    db.execute(
-        """
-        INSERT INTO antilink_settings (guild_id, enabled)
-        VALUES (?, ?)
-        ON CONFLICT(guild_id)
-        DO UPDATE SET enabled = excluded.enabled
-        """,
-        (ctx.guild.id, enabled)
-    
-    await ctx.reply(f"🌙 AntiLink đã **{status}** trong server này.")
     )
     db.commit()
 

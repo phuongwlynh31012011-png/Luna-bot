@@ -638,7 +638,8 @@ CATEGORIES = {
 
 class HelpSelect(discord.ui.Select):
     def __init__(self):
-        options = [
+        options = [ 
+            discord.SelectOption(label="Thông tin", emoji="ℹ️", value="info"),
             discord.SelectOption(label="Tiền Lune", emoji="💰", value="money"),
             discord.SelectOption(label="Trò chơi", emoji="🎮", value="games"),
             discord.SelectOption(label="Social", emoji="💗", value="social"),
